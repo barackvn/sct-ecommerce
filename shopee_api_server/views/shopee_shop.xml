@@ -1,0 +1,56 @@
+<odoo>
+  <data>
+    <!-- explicit list view definition -->
+    <record model="ir.ui.view" id="shopee_api_server.shopee_shop_list">
+      <field name="name">shopee shop list</field>
+      <field name="model">shopee_api_server.shopee_shop</field>
+      <field name="arch" type="xml">
+        <tree>
+          <field name="name"/>
+          <field name="client_id"/>
+          <field name="shop_id"/>
+          <field name="state"/>
+        </tree>
+      </field>
+    </record>
+
+    <!-- actions opening views on models -->
+    <record model="ir.actions.act_window" id="shopee_api_server.shopee_shop_action_window">
+      <field name="name">shopee_api_server window</field>
+      <field name="res_model">shopee_api_server.shopee_shop</field>
+      <field name="view_mode">tree,form</field>
+    </record>
+
+    <!-- server action to the one above -->
+    <!--
+    <record model="ir.actions.server" id="shopee_api_server.action_server">
+      <field name="name">shopee_api_server server</field>
+      <field name="model_id" ref="model_shopee_api_server_shopee_api_server"/>
+      <field name="state">code</field>
+      <field name="code">
+        action = {
+          "type": "ir.actions.act_window",
+          "view_mode": "tree,form",
+          "res_model": self._name,
+        }
+      </field>
+    </record>
+    -->
+
+    <!-- Top menu item -->
+    <menuitem name="shopee_api_server" id="shopee_api_server.menu_root"/>
+    <!-- menu categories -->
+    
+    <menuitem name="Menu 1" id="shopee_api_server.menu_1" parent="shopee_api_server.menu_root"/>
+    <!--
+    <menuitem name="Menu 2" id="shopee_api_server.menu_2" parent="shopee_api_server.menu_root"/>
+    -->
+    <!-- actions -->
+    <menuitem name="List" id="shopee_api_server.menu_1_list" parent="shopee_api_server.menu_1"
+              action="shopee_api_server.shopee_shop_action_window"/>
+    <!--
+    <menuitem name="Server to list" id="shopee_api_server" parent="shopee_api_server.menu_2"
+              action="shopee_api_server.action_server"/>
+    -->
+  </data>
+</odoo>

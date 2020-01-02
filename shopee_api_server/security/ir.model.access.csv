@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_shopee_api_server_shopee_shop,shopee_api_server.shopee_shop,model_shopee_api_server_shopee_shop,,1,1,1,1
+access_shopee_api_server_shopee_client,shopee_api_server.shopee_client,model_shopee_api_server_shopee_client,,1,1,1,1
