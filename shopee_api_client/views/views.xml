@@ -54,7 +54,7 @@
     <menuitem name="Menu 2" id="shopee_api_client.menu_2" parent="shopee_api_client.menu_root"/>
     -->
     <!-- actions -->
-    <menuitem name="Shopee API Shop" id="shopee_shopee_menu_list" parent="sales_team.menu_sale_config"
+    <menuitem name="Shopee API Shop" id="shopee_shopee_menu_list" parent="sale.menu_sale_config"
               action="shopee_client_shop_action_window"/>
     <!--
     <menuitem name="Server to list" id="shopee_api_client" parent="shopee_api_client.menu_2"
