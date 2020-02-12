@@ -5,8 +5,8 @@ import requests, logging, pyshopee
 
 _logger = logging.getLogger(__name__)
 
-class shopee_shop(models.Model):
-    _name = 'shopee_api_client.shopee_shop'
+class ShopeeClientShop(models.Model):
+    _name = 'shopee_client.shop'
 
     name = fields.Char()
     shopee_name = fields.Char()
@@ -15,8 +15,8 @@ class shopee_shop(models.Model):
     team_id = fields.Many2one('crm.team', 'Sales Team')
     partner_id = fields.Integer()
     key = fields.Char()
-    route_id = fields.Many2one('stock.location.route', 'Route')
-    location_id =fields.Many2one('stock.location', 'Location')
+    #route_id = fields.Many2one('stock.location.route', 'Route')
+    #location_id =fields.Many2one('stock.location', 'Location')
 
     @api.multi
     def auth(self):
@@ -73,7 +73,7 @@ class shopee_shop(models.Model):
                         }).id,
                     'price_unit': item['variation_discounted_price'] != '0' and item['variation_discounted_price'] or item['variation_original_price'],
                     'product_uom_qty': item['variation_quantity_purchased'],
-                    'route_id': self.route_id.id,
+                    #'route_id': self.route_id.id,
                     }) for item in shopee_order['items']], 
                 })
         order.message_post(body='Shipping Address: {}'.format(shopee_order['recipient_address']['full_address']))
@@ -86,17 +86,21 @@ class shopee_shop(models.Model):
             if order.state == 'draft': order.action_confirm()
         elif status == 'CANCELLED':
             order.action_cancel()
-        elif status == 'TO_RETURN':
-            shopee_pick_ids = order.picking_ids.filtered(lambda r: r.state not in ['done', 'cancel'] and r.picking_type_id.code == 'outgoing' and r.location_id.id == self.location_id.id)
-            for pick_id in shopee_pick_ids: pick_id.action_cancel()
-            my_pick_ids = order.picking_ids.filtered(lambda r: r.state == 'done' and r.picking_type_id.code == 'internal' and r.location_dest_id.id == self.location_id.id)
-            for pick_id in my_pick_ids: 
-                wiz = self.env['stock.picking.return'].create({'picking_id': pick_id.id}).create_returns()
         elif status == 'COMPLETED':
-            if order.state == 'sale': order.action_done()
-            pick_ids = order.picking_ids.filtered(lambda r: r.state not in ['done', 'cancel'] and r.picking_type_id.code == 'outgoing' and r.location_id.id == self.location_id.id)
-            for pick_id in pick_ids:
-                wiz = self.env['stock.immediate.transfer'].create({'pick_ids': [(4, pick_id.id)]}).process()
+            if oder.state == 'sale': order.action_done()
+        return order
+
+        #elif status == 'TO_RETURN':
+        #    shopee_pick_ids = order.picking_ids.filtered(lambda r: r.state not in ['done', 'cancel'] and r.picking_type_id.code == 'outgoing' and r.location_id.id == self.location_id.id)
+        #    for pick_id in shopee_pick_ids: pick_id.action_cancel()
+        #    my_pick_ids = order.picking_ids.filtered(lambda r: r.state == 'done' and r.picking_type_id.code == 'internal' and r.location_dest_id.id == self.location_id.id)
+        #    for pick_id in my_pick_ids: 
+        #        wiz = self.env['stock.picking.return'].create({'picking_id': pick_id.id}).create_returns()
+        #elif status == 'COMPLETED':
+        #    if order.state == 'sale': order.action_done()
+        #    pick_ids = order.picking_ids.filtered(lambda r: r.state not in ['done', 'cancel'] and r.picking_type_id.code == 'outgoing' and r.location_id.id == self.location_id.id)
+        #    for pick_id in pick_ids:
+        #        wiz = self.env['stock.immediate.transfer'].create({'pick_ids': [(4, pick_id.id)]}).process()
 
 
 

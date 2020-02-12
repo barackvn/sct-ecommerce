@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<odoo>
+    <data>
+        <record id="stock_warehouse_shopee" model="stock.warehouse">
+            <field name="name">Shopee Warehouse</field>
+            <field name="code">SW</field>
+        </record>
+
+        <function model="ir.model.data" name="_update_xmlids">
+            <value model="base" eval="[{
+                'xml_id': 'shopee_api_client_stock.stock_location_shopee_stock',
+                'record': obj().env.ref('shopee_api_client_stock.stock_warehouse_shopee').lot_stock_id,
+                'noupdate': True,
+            }, {
+                'xml_id': 'shopee_api_client_stock.stock_picking_type_shopee_in',
+                'record': obj().env.ref('shopee_api_client_stock.stock_warehouse_shopee').in_type_id,
+                'noupdate': True,
+            }, {
+                'xml_id': 'shopee_api_client_stock.stock_picking_type_shopee_out',
+                'record': obj().env.ref('shopee_api_client_stock.stock_warehouse_shopee').out_type_id,
+                'noupdate': True,
+            }]"/>
+        </function>
+
+        <record id="stock_location_route_shopee" model='stock.location.route'>
+            <field name="name">Shopee Route</field>
+            <field name="company_id"></field>
+            <field name="sequence">10</field>
+            <field name="sale_selectable" eval="True"/>
+        </record>
+        <record id="stock_rule_shopee1" model='stock.rule'>
+            <field name="name">WH → Shopee</field>
+            <field name="action">pull</field>
+            <field name="picking_type_id" ref="stock.picking_type_out"/>
+            <field name="location_src_id" ref="stock.stock_location_stock"/>
+            <field name="location_id" ref="shopee_api_client_stock.stock_location_shopee_stock"/>
+            <field name="procure_method">make_to_stock</field>
+            <field name="route_id" ref="stock_location_route_shopee"/>
+            <field name="sequence">20</field>
+        </record>
+        
+        <record id="stock_rule_shopee2" model='stock.rule'>
+            <field name="name">Shopee → Customer</field>
+            <field name="action">pull</field>
+            <field name="picking_type_id" ref="shopee_api_client_stock.stock_picking_type_shopee_out"/>
+            <field name="location_src_id" ref="shopee_api_client_stock.stock_location_shopee_stock"/>
+            <field name="location_id" ref="stock.stock_location_customers"/>
+            <field name="procure_method">make_to_order</field>
+            <field name="route_id" ref="stock_location_route_shopee"/>
+            <field name="sequence">20</field>
+        </record>
+    </data>
+</odoo>

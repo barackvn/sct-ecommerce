@@ -1,9 +1,9 @@
 <odoo>
   <data>
     <!-- explicit list view definition -->
-    <record model="ir.ui.view" id="shopee_api_client.form">
+    <record model="ir.ui.view" id="shopee_client_shop_form">
       <field name="name">shopee_api_client form</field>
-      <field name="model">shopee_api_client.shopee_shop</field>
+      <field name="model">shopee_client.shop</field>
       <field name="arch" type="xml">
         <form>
             <header>
@@ -15,8 +15,6 @@
                 <field name="shop_id"/>
                 <field name="state"/>
                 <field name="team_id"/>
-                <field name="route_id"/>
-                <field name="location_id"/>
             </group>
 
         </form>
@@ -24,9 +22,9 @@
     </record>
 
     <!-- actions opening views on models -->
-    <record model="ir.actions.act_window" id="shopee_api_client.action_window">
+    <record model="ir.actions.act_window" id="shopee_client_shop_action_window">
       <field name="name">shopee_api_client window</field>
-      <field name="res_model">shopee_api_client.shopee_shop</field>
+      <field name="res_model">shopee_client.shop</field>
       <field name="view_mode">tree,form</field>
     </record>
 
@@ -48,16 +46,16 @@
 
     <!-- Top menu item -->
     
-    <menuitem name="shopee_api_client" id="shopee_api_client.menu_root"/>
+    <!--menuitem name="shopee_api_client" id="shopee_api_client.menu_root"/-->
     
     <!-- menu categories -->
-    <menuitem name="Menu 1" id="shopee_api_client.menu_1" parent="shopee_api_client.menu_root"/>
+    <!--menuitem name="Menu 1" id="shopee_api_client.menu_1" parent="shopee_api_client.menu_root"/-->
     <!--
     <menuitem name="Menu 2" id="shopee_api_client.menu_2" parent="shopee_api_client.menu_root"/>
     -->
     <!-- actions -->
-    <menuitem name="List" id="shopee_api_client.menu_1_list" parent="shopee_api_client.menu_1"
-              action="shopee_api_client.action_window"/>
+    <menuitem name="Shopee API Shop" id="shopee_shopee_menu_list" parent="sales_team.menu_sale_config"
+              action="shopee_client_shop_action_window"/>
     <!--
     <menuitem name="Server to list" id="shopee_api_client" parent="shopee_api_client.menu_2"
               action="shopee_api_client.action_server"/>

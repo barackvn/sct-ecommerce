@@ -5,17 +5,17 @@ import logging
 
 _logger = logging.getLogger(__name__)
 PARAMS = {
-    "partner_id": "shopee_api_server.shopee_partner_id",
-    "key": "shopee_api_server.shopee_partner_key",
+    "partner_id": "shopee_server.shopee_partner_id",
+    "key": "shopee_server.shopee_partner_key",
 }
 
 class ShopeeApiServer(http.Controller):
-    @http.route('/shopee_api_server/shopee_shop/<model("shopee_api_server.shopee_shop"):shop>/retrieve/', auth='public')
+    @http.route('/shopee_server/shop/<model("shopee_server.shop"):shop>/retrieve/', auth='public')
     def retrieve_shop_id(self, shop,**kw):
         #fix security later
         shop = shop.sudo()
 
-        shops = http.request.env['shopee_api_server.shopee_shop'].sudo().search([('shop_id','=',kw.get('shop_id'))])
+        shops = http.request.env['shopee_server.shop'].sudo().search([('shop_id','=',kw.get('shop_id'))])
         if shops and shops[0] != shop:
             shop.unlink()
             shop = shops[0]
@@ -26,14 +26,14 @@ class ShopeeApiServer(http.Controller):
         return 'Successful!'
 
 
-    @http.route('/shopee_api_server/shopee_shop/request', type='http', methods=['POST'], auth='public', csrf=False)
+    @http.route('/shopee_server/shop/request', type='http', methods=['POST'], auth='public', csrf=False)
     def reg_request(self, token=True, **kw):
         if token:
-            shop = http.request.env['shopee_api_server.shopee_shop'].sudo().handle_reg_request(kw)
+            shop = http.request.env['shopee_server.shop'].sudo().handle_reg_request(kw)
             return shop and shop.authorize_url
 
 
-    @http.route('/shopee_api_server/shopee_shop/postman', type='json', methods=['POST'], auth='public')
+    @http.route('/shopee_server/shop/postman', type='json', methods=['POST'], auth='public')
     def handle_post(self, **kw):
         url = http.request.httprequest.url
         json_data = http.request.jsonrequest 
@@ -47,22 +47,22 @@ class ShopeeApiServer(http.Controller):
         base_string = url + '|' + request_body
         cal_auth = hmac.new(partner_key.encode(), base_string.encode(), hashlib.sha256).hexdigest()
         if cal_auth != authorization:
-            http.request.env['shopee_api_server.shopee_shop'].sudo().search([('shop_id','=',json_data.get('shop_id'))]).handle_push(json_data)
+            http.request.env['shopee_server.shop'].sudo().search([('shop_id','=',json_data.get('shop_id'))]).handle_push(json_data)
             _logger.info(json_data)
             return http.Response(status=202)
         else:
             return http.Response(status=500)
  
 
-#     @http.route('/shopee_api_server/shopee_api_server/objects/', auth='public')
+#     @http.route('/shopee_server/shopee_server/objects/', auth='public')
 #     def list(self, **kw):
-#         return http.request.render('shopee_api_server.listing', {
-#             'root': '/shopee_api_server/shopee_api_server',
-#             'objects': http.request.env['shopee_api_server.shopee_api_server'].search([]),
+#         return http.request.render('shopee_server.listing', {
+#             'root': '/shopee_server/shopee_server',
+#             'objects': http.request.env['shopee_server.shopee_server'].search([]),
 #         })
 
-#     @http.route('/shopee_api_server/shopee_api_server/objects/<model("shopee_api_server.shopee_api_server"):obj>/', auth='public')
+#     @http.route('/shopee_server/shopee_server/objects/<model("shopee_server.shopee_server"):obj>/', auth='public')
 #     def object(self, obj, **kw):
-#         return http.request.render('shopee_api_server.object', {
+#         return http.request.render('shopee_server.object', {
 #             'object': obj
 #         })

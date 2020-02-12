@@ -1,9 +1,9 @@
 <odoo>
   <data>
     <!-- explicit list view definition -->
-    <record model="ir.ui.view" id="shopee_api_server.shopee_shop_list">
+    <record model="ir.ui.view" id="shop_list">
       <field name="name">shopee shop list</field>
-      <field name="model">shopee_api_server.shopee_shop</field>
+      <field name="model">shopee_server.shop</field>
       <field name="arch" type="xml">
         <tree>
           <field name="name"/>
@@ -15,17 +15,17 @@
     </record>
 
     <!-- actions opening views on models -->
-    <record model="ir.actions.act_window" id="shopee_api_server.shopee_shop_action_window">
-      <field name="name">shopee_api_server window</field>
-      <field name="res_model">shopee_api_server.shopee_shop</field>
+    <record model="ir.actions.act_window" id="shop_action_window">
+      <field name="name">shopee_server window</field>
+      <field name="res_model">shopee_server.shop</field>
       <field name="view_mode">tree,form</field>
     </record>
 
     <!-- server action to the one above -->
     <!--
-    <record model="ir.actions.server" id="shopee_api_server.action_server">
-      <field name="name">shopee_api_server server</field>
-      <field name="model_id" ref="model_shopee_api_server_shopee_api_server"/>
+    <record model="ir.actions.server" id="shopee_server.action_server">
+      <field name="name">shopee_server server</field>
+      <field name="model_id" ref="model_shopee_server_shopee_server"/>
       <field name="state">code</field>
       <field name="code">
         action = {
@@ -38,19 +38,19 @@
     -->
 
     <!-- Top menu item -->
-    <menuitem name="shopee_api_server" id="shopee_api_server.menu_root"/>
+    <menuitem name="shopee_server" id="menu_root"/>
     <!-- menu categories -->
     
-    <menuitem name="Menu 1" id="shopee_api_server.menu_1" parent="shopee_api_server.menu_root"/>
+    <menuitem name="Menu 1" id="menu_1" parent="menu_root"/>
     <!--
-    <menuitem name="Menu 2" id="shopee_api_server.menu_2" parent="shopee_api_server.menu_root"/>
+    <menuitem name="Menu 2" id="shopee_server.menu_2" parent="shopee_server.menu_root"/>
     -->
     <!-- actions -->
-    <menuitem name="List" id="shopee_api_server.menu_1_list" parent="shopee_api_server.menu_1"
-              action="shopee_api_server.shopee_shop_action_window"/>
+    <menuitem name="List" id="menu_1_list" parent="menu_1"
+              action="shop_action_window"/>
     <!--
-    <menuitem name="Server to list" id="shopee_api_server" parent="shopee_api_server.menu_2"
-              action="shopee_api_server.action_server"/>
+    <menuitem name="Server to list" id="shopee_server" parent="shopee_server.menu_2"
+              action="shopee_server.action_server"/>
     -->
   </data>
 </odoo>
