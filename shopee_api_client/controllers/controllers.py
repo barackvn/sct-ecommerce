@@ -1,25 +1,25 @@
 # -*- coding: utf-8 -*-
 from odoo import http
-import logging
-_logger = logging.getLogger(__name__)
 
 class ShopeeApiClient(http.Controller):
-    @http.route('/shopee_api_client/shopee_shop/<model("shopee_api_client.shopee_shop"):shop>/auth', methods=['POST'], auth='public',csrf=False)
+    @http.route('/shopee_client/shop/<model("shopee_client.shop"):shop>/auth', methods=['POST'], auth='public',csrf=False)
     def auth_push(self,shop, **kw):
         if shop.sudo().write(kw):
-            shop.getPyClient()
             return http.Response(status=200)
         else:
             return http.Response(status=500)
 
 
-    @http.route('/shopee_api_client/shopee_shop/<model("shopee_api_client.shopee_shop"):shop>/order', methods=['POST'], auth='public',csrf=False)
-    def order_push(self,shop, **kw):
-        if shop.sudo().order_push(kw.get('ordersn'), kw.get('status'),kw.get('update_time')):
-        #if shop.sudo().write(kw):
+    @http.route('/shopee_client/shop/<model("shopee_client.shop"):shop>/order_status', methods=['POST'], auth='public',csrf=False)
+    def order_status(self,shop, **kw):
+        if shop.sudo().order_status_push(kw.get('ordersn'), kw.get('status'),kw.get('update_time')):
             return http.Response(status=200)
         else:
             return http.Response(status=500)
+    
+    @http.route('/shopee_client/shop/<model("shopee_client.shop"):shop>/order_tracking_no', methods=['POST'], auth='public',csrf=False)
+    def order_tracking_no(self,shop, **kw):
+        return http.Response(status=200)
 #     def index(self, **kw):
 #         return "Hello, world"
 

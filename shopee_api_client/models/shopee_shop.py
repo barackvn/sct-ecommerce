@@ -22,10 +22,9 @@ class ShopeeClientShop(models.Model):
     def auth(self):
         self.ensure_one()
         client_name = self._cr.dbname
-        url = "https://shopee.scaleup.top/shopee_api_server/shopee_shop/request"
+        url = "https://shopee.scaleup.top/shopee_server/shop/request"
         for shop in self:
             req = requests.post(url=url, data={'client':client_name,'client_shop_id': shop.id, 'name': shop.name})
-            _logger.info(req.text,req.__dict__)
             return {
                 "type": "ir.actions.act_url",
                 "url": req.text,
@@ -43,15 +42,15 @@ class ShopeeClientShop(models.Model):
         return pyshopee.Client(self.shop_id, self.partner_id, self.key)
 
     @api.multi
-    def order_push(self, ordersn, status, update_time):
+    def order_status_push(self, ordersn, status, update_time):
         for shop in self:
             if status == 'UNPAID': shop.new_order(ordersn, status, update_time)
             else: shop.update_order(ordersn, status, update_time)
+            return True
 
     def new_order(self, ordersn, status, update_time):
         resp = self.pyClient().order.get_order_detail(ordersn_list=[ordersn])
         shopee_orders = resp.get('orders')
-        _logger.info(shopee_orders)
         shopee_order = shopee_orders[0]
         partner_vals = {
                 'phone': shopee_order['recipient_address']['phone'],
@@ -65,7 +64,7 @@ class ShopeeClientShop(models.Model):
                 'client_order_ref': ordersn,
                 'partner_id': self.env['res.partner'].search([('phone','=',partner_vals['phone'])])[:1].id or self.env['res.partner'].create(partner_vals).id,
                 'order_line':[(0, _, {
-                    'product_id' : self.env['product.product'].search([('default_code','in',[item['variation_sku'], item['item_sku']])])[:1].id or self.env['product.product'].create({
+                    'product_id' : self.env['product.product'].search([('default_code','=',item['variation_sku'] or item['item_sku'])])[:1].id or self.env['product.product'].create({
                         'name': item['variation_name'] or item['item_name'],
                         'default_code': item['variation_sku'] or item['item_sku'],
                         'lst_price': item['variation_original_price'],
@@ -87,7 +86,7 @@ class ShopeeClientShop(models.Model):
         elif status == 'CANCELLED':
             order.action_cancel()
         elif status == 'COMPLETED':
-            if oder.state == 'sale': order.action_done()
+            if order.state == 'sale': order.action_done()
         return order
 
         #elif status == 'TO_RETURN':

@@ -36,24 +36,29 @@ class ShopeeApiServer(http.Controller):
     @http.route('/shopee_server/shop/postman', type='json', methods=['POST'], auth='public')
     def handle_post(self, **kw):
         url = http.request.httprequest.url
-        json_data = http.request.jsonrequest 
-        request_body = json.dumps(json_data) 
+        #url = http.request.httprequest.environ.get('HTTP_HOST')+ http.request.httprequest.environ.get('PATH_INFO')
+        #_logger.info(url)
+        json_data = http.request.jsonrequest
+        #_logger.info(http.request.__dict__)
+        request_body = json.dumps(json_data)
+        #_logger.info(request_body)
         partner_key = http.request.env['ir.config_parameter'].sudo().get_param(PARAMS['key'], '')
         authorization = http.request.httprequest.environ.get('HTTP_AUTHORIZATION')
-#        _logger.info(http.request.__dict__)
-#        _logger.info(http.request.httprequest.__dict__)
-        _logger.info(url,request_body, partner_key, authorization)
-
+        #_logger.info(authorization)
         base_string = url + '|' + request_body
         cal_auth = hmac.new(partner_key.encode(), base_string.encode(), hashlib.sha256).hexdigest()
-        if cal_auth != authorization:
-            http.request.env['shopee_server.shop'].sudo().search([('shop_id','=',json_data.get('shop_id'))]).handle_push(json_data)
+        #_logger.info(cal_auth)
+        #if cal_auth == authorization:
+        if True:
             _logger.info(json_data)
+            http.request.env['shopee_server.shop'].sudo().search([('shop_id','=',json_data.get('shop_id'))]).handle_push(json_data)
             return http.Response(status=202)
         else:
             return http.Response(status=500)
  
 
+#        _logger.info(http.request.__dict__)
+#        _logger.info(http.request.httprequest.__dict__)
 #     @http.route('/shopee_server/shopee_server/objects/', auth='public')
 #     def list(self, **kw):
 #         return http.request.render('shopee_server.listing', {

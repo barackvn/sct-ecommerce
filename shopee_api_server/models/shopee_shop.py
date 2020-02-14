@@ -61,21 +61,23 @@ class ShopeeServerShop(models.Model):
     @api.multi
     def handle_push(self, data):
         for shop in self:
-            _logger.info(data)
             if data.get('code',0) == 1:
-                url = "https://{}/client/shop/{}/auth".format(shop.client_id.name, shop.client_shop_id)
+                url = "https://{}/shopee_client/shop/{}/auth".format(shop.client_id.name, shop.client_shop_id)
                 partner_id = self.env['ir.config_parameter'].get_param(PARAMS['partner_id'], 0)
                 key = self.env['ir.config_parameter'].get_param(PARAMS['key'], '')
                 values = {'shop_id': data.get('shop_id'),'state':'auth', 'partner_id': partner_id, 'key': key}
                 shop.pyClient = pyshopee.Client(shop.shop_id, partner_id, key)
                 req = requests.post(url=url,data=values)
-                _logger.info(req.text)
             
             elif data.get('code',0) == 2:
                 pass
 
             elif data.get('code',0) == 3:
-                url = "https://{}/client/shop/{}/order".format(shop.client_id.name, shop.client_shop_id)
+                url = "https://{}/shopee_client/shop/{}/order_status".format(shop.client_id.name, shop.client_shop_id)
+                req = requests.post(url=url,data=data.get('data'))
+            
+            elif data.get('code',0) == 4:
+                url = "https://{}/shopee_client/shop/{}/order_tracking_no".format(shop.client_id.name, shop.client_shop_id)
                 req = requests.post(url=url,data=data.get('data'))
 
 #    @api.depends()
