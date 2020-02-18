@@ -34,6 +34,7 @@ class StockPickingBatch(models.Model):
     def on_barcode_scanned(self, barcode):
         self._set_message_info('success', _('Barcode read correctly'), barcode)
         pickings=self.env['stock.picking'].search([
+            ('batch_id','=',False),
             ('state','not in',['done', 'cancel']),
             ('picking_type_id','=?',self.picking_type_id.id),
             ('carrier_tracking_ref','=',barcode)])
@@ -41,10 +42,23 @@ class StockPickingBatch(models.Model):
         if pickings:
             if len(pickings) > 1:
                 self._set_message_info('more_match',_('More than one picking found'), barcode)
-            val = {'picking_ids': [(4, p.id, _) for p in pickings]}
-            _logger.info(val)
+            val = {'picking_ids': [(1, p.id, {'process_datetime': fields.Datetime.now()}) for p in pickings]}
+            #val = {'picking_ids': [(4, p.id, _) for p in pickings]}
             self.update(val)
         elif self.picking_type_id:
             self._set_message_info('not_found',_('No available picking in this operation type'), barcode)
         else:
             self._set_message_info('not_found',_('No available picking found'), barcode)
+    
+    @api.onchange('picking_ids')
+    def onchange_picking_ids(self):
+        res = {'value':{
+            'picking_ids': [
+                (1, p.id, {'process_datetime': fields.Datetime.now()}) for p in self.picking_ids.filtered(lambda r: r.process_datetime == False)
+                ]}}
+        return res
+
+    @api.multi
+    def remove_undone_pickings(self):
+        self.mapped('active_picking_ids').write({'batch_id': False, 'process_datetime':False})
+        self.verify_state()

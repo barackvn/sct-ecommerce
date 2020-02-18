@@ -6,4 +6,4 @@ from odoo import fields, models, api, _
 class StockPicking(models.Model):
     _inherit = 'stock.picking'
 
-    barcode = fields.Char()
+    process_datetime = fields.Datetime(string=_("Processing Datetime"))

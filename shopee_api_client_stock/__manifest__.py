@@ -27,6 +27,7 @@
         'views/views.xml',
         'views/templates.xml',
         'data/stock_data.xml',
+        'data/cron.xml',
     ],
     # only loaded in demonstration mode
     'demo': [

@@ -24,6 +24,9 @@
             <xpath expr="//field[@name='user_id']" position="after">
                 <field name="picking_type_id"/>
             </xpath>
+            <xpath expr="//field[@name='picking_ids']" position="attributes">
+                <attribute name="domain">[('batch_id', '=', False),('state', 'not in', ('done', 'cancel'))]</attribute>
+            </xpath>
         </field>
     </record>
 </odoo>

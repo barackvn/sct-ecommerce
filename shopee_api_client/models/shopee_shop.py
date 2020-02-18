@@ -5,6 +5,11 @@ import requests, logging, pyshopee
 
 _logger = logging.getLogger(__name__)
 
+class SaleOrder(models.Model):
+    _inherit = 'sale.order'
+
+    shop_ref = fields.Reference(selection=[('shopee_client.shop', "Shopee Shop")], string="Shop Reference")
+    
 class ShopeeClientShop(models.Model):
     _name = 'shopee_client.shop'
 
@@ -60,6 +65,7 @@ class ShopeeClientShop(models.Model):
 #        partner_id = self.env['res.partner'].search([('phone','=',partner_vals['phone'])])[:1] or self.env['res.partner'].create(partner_vals)
 
         order = self.env['sale.order'].create({
+                'shop_ref' : '{},{}'.format(self._name, self.id),
                 'team_id': self.team_id and self.team_id.id,
                 'client_order_ref': ordersn,
                 'partner_id': self.env['res.partner'].search([('phone','=',partner_vals['phone'])])[:1].id or self.env['res.partner'].create(partner_vals).id,
