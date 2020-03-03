@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<odoo>
+    <data>
+        <record model="ir.ui.view" id="ecommerce_platform_tree_view">
+            <field name="name">ecommerce.platform.tree</field>
+            <field name="model">ecommerce.platform</field>
+            <field name="arch" type="xml">
+                <tree string="Platform">
+                    <field name="name"/>
+                    <field name="platform"/>
+                </tree>
+            </field>
+        </record>
+
+        <record model="ir.ui.view" id="ecommerce_platform_form_view">
+            <field name="name">ecommerce.platform.form</field>
+            <field name="model">ecommerce.platform</field>
+            <field name="arch" type="xml">
+                <form string="Platform">
+                    <group>
+                        <field name="name"/>
+                        <field name="platform"/>
+                        <field name="partner_id"/>
+                        <field name="key"/>
+                    </group>
+                </form>
+            </field>
+        </record>
+
+        <record model="ir.actions.act_window" id="ecommerce_platform_view_action">
+            <field name="name">eCommerce Platform</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">ecommerce.platform</field>
+            <field name="view_mode">tree,form</field>
+        </record>
+
+        <record model="ir.ui.view" id="ecommerce_category_tree_view">
+            <field name="name">ecommerce.category.tree</field>
+            <field name="model">ecommerce.category</field>
+            <field name="arch" type="xml">
+                <tree string="eCommerce Category">
+                    <field name="name"/>
+                    <field name="platf_id"/>
+                    <field name="platf_categ_idn"/>
+                    <field name="parent_id"/>
+                </tree>
+            </field>
+        </record>
+
+        <record model="ir.ui.view" id="ecommerce_category_form_view">
+            <field name="name">ecommerce.category.form</field>
+            <field name="model">ecommerce.category</field>
+            <field name="arch" type="xml">
+                <form string="Category">
+                    <group>
+                        <field name="name"/>
+                        <field name="complete_name"/>
+                        <field name="platf_id"/>
+                        <field name="platf_categ_idn"/>
+                        <field name="parent_id"/>
+                    </group>
+                </form>
+            </field>
+        </record>
+
+        <record model="ir.actions.act_window" id="ecommerce_category_view_action">
+            <field name="name">eCommerce Category</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">ecommerce.category</field>
+            <field name="view_mode">tree,form</field>
+        </record>
+
+        <menuitem id="ecommerce_base_menu_root" name="eCommerce API" groups="base.group_erp_manager" sequence="10"/>
+        <menuitem id="ecommerce_base_menu_config" name="Configurations" sequence="99" parent="ecommerce_base_menu_root"/>
+        <menuitem action="ecommerce_platform_view_action" id="ecommerce_platform_menu" parent="ecommerce_base_menu_config" name="Platform" sequence="1"/>
+        <menuitem action="ecommerce_category_view_action" id="ecommerce_category_menu" parent="ecommerce_base_menu_config" name="Category" sequence="2"/>
+    </data>
+</odoo>

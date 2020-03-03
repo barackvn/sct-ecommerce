@@ -20,6 +20,15 @@ class ShopeeClientShop(models.Model):
     team_id = fields.Many2one('crm.team', 'Sales Team')
     partner_id = fields.Integer()
     key = fields.Char()
+    is_main = fields.Boolean(string=_("Main Shop"))
+
+    @api.contrains('is_main')
+    def _unique_main(self):
+        self.ensure_one()
+        if self.is_main: 
+            for shop in self.env['shopee_client.shop'].search([('id', '!=', self.id)]):
+                shop.is_main = False
+
     #route_id = fields.Many2one('stock.location.route', 'Route')
     #location_id =fields.Many2one('stock.location', 'Location')
 

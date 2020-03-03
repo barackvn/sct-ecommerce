@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<odoo>
+    <data>
+        <record model="ir.ui.view" id="ecommerce_shop_tree_view">
+            <field name="name">ecommerce.shop.tree</field>
+            <field name="model">ecommerce.shop</field>
+            <field name="arch" type="xml">
+                <tree string="eCommerce Shop">
+                    <field name="name"/>
+                    <field name="platf_id"/>
+                </tree>
+            </field>
+        </record>
+
+        <record model="ir.ui.view" id="ecommerce_shop_form_view">
+            <field name="name">ecommerce.shop.form</field>
+            <field name="model">ecommerce.shop</field>
+            <field name="arch" type="xml">
+                <form string="eCommerce Shop">
+                    <header>
+                        <field name="state" widget="statusbar"/>
+                    </header>
+                    <group>
+                        <field name="name"/>
+                        <field name="ecomm_shop_name"/>
+                        <field name="platf_id"/>
+                        <field name="ecomm_shop_idn"/>
+                        <field name="is_main"/>
+                    </group>
+                </form>
+            </field>
+        </record>
+
+        <record model="ir.actions.act_window" id="ecommerce_shop_view_action">
+            <field name="name">eCommerce Shop</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">ecommerce.shop</field>
+            <field name="view_mode">tree,form</field>
+        </record>
+
+        <menuitem id="ecommerce_shop_menu" action="ecommerce_shop_view_action" parent="ecommerce_base_menu_root" sequence="0"/>
+
+    </data>
+</odoo>

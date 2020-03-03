@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 {
-    'name': "shopee_api_client",
+    'name': "shopee_ecommerce_client",
 
     'summary': """
         Short (1 phrase/line) summary of the module's purpose, used as
@@ -20,12 +20,13 @@
     'version': '0.1',
 
     # any module necessary for this one to work correctly
-    'depends': ['sale', 'website_sale', 'product_variant_sale_price'],
+    'depends': ['base_ecommerce_client'],
 
     # always loaded
     'data': [
         'security/ir.model.access.csv',
-        'views/views.xml',
+        'views/product_views.xml',
+        'views/ecommerce_product_views.xml',
         'views/templates.xml',
     ],
     # only loaded in demonstration mode
