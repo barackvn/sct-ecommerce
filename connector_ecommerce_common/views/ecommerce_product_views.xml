@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<odoo>
+    <data>
+        <record model="ir.ui.view" id="ecommerce_product_template_common_form">
+            <field name="name">ecommerce.product.template.common.form</field>
+            <field name="model">ecommerce.product.template</field>
+            <field name="arch" type="xml">
+                <form string="eCommerce Product">
+                    <header>
+                        <button string="Update eCommerce Info" name="update_info" class="btn-info" type="object"/>
+                    </header>
+                    <sheet>
+                        <group col="4">
+                                <field name="shop_id" />
+                                <field name="platform_item_idn" />
+                                <field name="product_product_id"/>
+                                <field name="auto_update_stock" widget="boolean_toggle"/>
+                        </group>
+                        <group col="2">
+                            <field name="name"/>
+                            <field name="description"/>
+                        </group>
+                        <notebook>
+                            <page string="Variants" name="variant">
+                                <field name="ecomm_product_product_ids" nolabel="1">
+                                    <tree create="0">
+                                        <field name="name"/>
+                                        <field name="platform_variant_idn"/>
+                                        <field name="product_product_id"/>
+                                    </tree>
+                                </field>
+                            </page>
+                            <page string="Dynamic Generator" name="generator">
+                                <group col="2">
+                                    <button name="preview" type="object" class="btn-info" string="Preview"/>
+                                    <field name="lang"/>
+                                    <field name="model_object_field" domain="[('model','=','ecommerce.product.template')]"/>
+                                    <field name="sub_object" readonly="1"/>
+                                    <field name="sub_model_object_field" domain="[('model_id','=',sub_object)]" attrs="{'readonly':[('sub_object','=',False)]}"/>
+                                    <field name="null_value"/>
+                                    <field name="copy_value"/>
+                                </group>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+    </data>
+</odoo>

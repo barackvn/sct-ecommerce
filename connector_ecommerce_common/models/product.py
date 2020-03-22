@@ -42,3 +42,16 @@ class ProductTemplate(models.Model):
 #
 #    is_ecom_attribute = fields.Boolean("Is eCommerce Attribute", readonly=True, related='attribute_id.is_ecom_attribute')
 
+class ProductProduct(models.Model):
+    _inherit = 'product.product'
+
+    def get_virtual_expire(self, field=False):
+        self.ensure_one()
+        lots = self.env['stock.quant'].search([
+            ('product_id','=',self.id),
+            ('location_id.usage','=','internal')]).filtered(lambda q: q.reserved_quantity < q.quantity).mapped('lot_id').sorted(field or 'name')
+        if lots:
+            return lots[0][field or 'name']
+        else:
+            return False
+

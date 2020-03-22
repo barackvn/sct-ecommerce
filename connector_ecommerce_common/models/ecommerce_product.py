@@ -1,60 +1,115 @@
 # -*- coding: utf-8 -*-
 
-from odoo import fields, models, api, _
+from odoo import fields, models, api, _, tools
+import babel
+from odoo.exceptions import UserError
+from odoo.tools import pycompat
+import datetime
+from werkzeug import urls
+import functools
 
-class eCommerceCategory(models.Model):
-    _name = 'ecommerce.category'
-
-    name = fields.Char(required=True, translate=True)
-    platform_id = fields.Many2one('ecommerce.platform')
-    platform_categ_idn = fields.Integer()
-    platform_parent_categ_idn = fields.Integer()
-    parent_id = fields.Many2one('ecommerce.category', 'Parent Category')
-    child_ids = fields.One2many('ecommerce.category', 'parent_id')
-    complete_name = fields.Char('Complete Name', compute='_compute_complete_name', store=True)
+import dateutil.relativedelta as relativedelta
+import logging
+_logger = logging.getLogger(__name__)
 
 
-    @api.depends('name', 'parent_id.complete_name')
-    def _compute_complete_name(self):
-        for category in self:
-            if category.parent_id:
-                category.complete_name = '{} > {}'.format(category.parent_id.complete_name, category.name)
-            else:
-                category.complete_name = category.name
+def format_date(env, date, pattern=False):
+    if not date:
+        return ''
+    try:
+        return tools.format_date(env, date, date_format=pattern)
+    except babel.core.UnknownLocaleError:
+        return date
 
-    @api.constrains('parent_id')
-    def _check_category_recursion(self):
-        if not self._check_recursion():
-            raise ValidationError(_('You cannot create recursive categories.'))
-        return True
 
-class eCommerceAttribute(models.Model):
-    _name = 'ecommerce.attribute'
-    
-    name = fields.Char('Attribute', required=True, translate=True)
-    platform_id = fields.Many2one('ecommerce.platform', required=True)
-    platform_attr_idn = fields.Integer()
-    platform_attr__name = fields.Char(help="Some platform identify their attributes by name")
-    value_ids = fields.One2many('ecommerce.attribute.value', 'attr_id', 'Values')
+def format_tz(env, dt, tz=False, format=False):
+    record_user_timestamp = env.user.sudo().with_context(tz=tz or env.user.sudo().tz or 'UTC')
+    timestamp = fields.Datetime.from_string(dt)
 
-class eCommerceAttributeValue(models.Model):
-    _name = 'ecommerce.attribute.value'
+    ts = fields.Datetime.context_timestamp(record_user_timestamp, timestamp)
 
-    name = fields.Char(string='Value', required=True, translate=True)
-    attr_id = fields.Many2one('ecommerce.attribute', string='eCommerce Attribute', ondelete='cascade', required=True)
+    # Babel allows to format datetime in a specific language without change locale
+    # So month 1 = January in English, and janvier in French
+    # Be aware that the default value for format is 'medium', instead of 'short'
+    #     medium:  Jan 5, 2016, 10:20:31 PM |   5 janv. 2016 22:20:31
+    #     short:   1/5/16, 10:20 PM         |   5/01/16 22:20
+    if env.context.get('use_babel'):
+        # Formatting available here : http://babel.pocoo.org/en/latest/dates.html#date-fields
+        from babel.dates import format_datetime
+        return format_datetime(ts, format or 'medium', locale=env.context.get("lang") or 'en_US')
 
-    _sql_constraints = [
-            ('value_company_uniq', 'unique (name, attr_id)', 'This attribute value already exists !')
-            ]
+    if format:
+        return pycompat.text_type(ts.strftime(format))
+    else:
+        lang = env.context.get("lang")
+        langs = env['res.lang']
+        if lang:
+            langs = env['res.lang'].search([("code", "=", lang)])
+        format_date = langs.date_format or '%B-%d-%Y'
+        format_time = langs.time_format or '%I-%M %p'
 
-class eCommerceProductSampleAttributeLine(models.Model):
-    _name = 'ecommerce.product.sample.attribute.line'
-    _rec_name = 'attr_id'
+        fdate = pycompat.text_type(ts.strftime(format_date))
+        ftime = pycompat.text_type(ts.strftime(format_time))
+        return u"%s %s%s" % (fdate, ftime, (u' (%s)' % tz) if tz else u'')
 
-#    product_sample_id = fields.Many2one('ecommerce.product.sample', string='Product Sample', ondelete='cascade', required=True)
-    attr_id = fields.Many2one('ecommerce.attribute', string='eCommerce Attribute', ondelete='restrict', required=True)
-    platform_id = fields.Many2one('ecommerce.platform', related='attr_id.platform_id', readonly=True)
-    value_ids = fields.Many2many('ecommerce.attribute.value', 'ecommerce_attr_value_sample_attr_line_rel',string='eCommerce Attribute Values')
+def format_amount(env, amount, currency):
+    fmt = "%.{0}f".format(currency.decimal_places)
+    lang = env['res.lang']._lang_get(env.context.get('lang') or 'en_US')
+
+    formatted_amount = lang.format(fmt, currency.round(amount), grouping=True, monetary=True)\
+        .replace(r' ', u'\N{NO-BREAK SPACE}').replace(r'-', u'-\N{ZERO WIDTH NO-BREAK SPACE}')
+
+    pre = post = u''
+    if currency.position == 'before':
+        pre = u'{symbol}\N{NO-BREAK SPACE}'.format(symbol=currency.symbol or '')
+    else:
+        post = u'\N{NO-BREAK SPACE}{symbol}'.format(symbol=currency.symbol or '')
+
+    return u'{pre}{0}{post}'.format(formatted_amount, pre=pre, post=post)
+
+try:
+    # We use a jinja2 sandboxed environment to render mako templates.
+    # Note that the rendering does not cover all the mako syntax, in particular
+    # arbitrary Python statements are not accepted, and not all expressions are
+    # allowed: only "public" attributes (not starting with '_') of objects may
+    # be accessed.
+    # This is done on purpose: it prevents incidental or malicious execution of
+    # Python code that may break the security of the server.
+    from jinja2.sandbox import SandboxedEnvironment
+    mako_template_env = SandboxedEnvironment(
+        block_start_string="<%",
+        block_end_string="%>",
+        variable_start_string="${",
+        variable_end_string="}",
+        comment_start_string="<%doc>",
+        comment_end_string="</%doc>",
+        line_statement_prefix="%",
+        line_comment_prefix="##",
+        trim_blocks=True,               # do not output newline after blocks
+        autoescape=True,                # XML/HTML automatic escaping
+    )
+    mako_template_env.globals.update({
+        'str': str,
+        'quote': urls.url_quote,
+        'urlencode': urls.url_encode,
+        'datetime': datetime,
+        'len': len,
+        'abs': abs,
+        'min': min,
+        'max': max,
+        'sum': sum,
+        'filter': filter,
+        'reduce': functools.reduce,
+        'map': map,
+        'round': round,
+
+        # dateutil.relativedelta is an old-style class and cannot be directly
+        # instanciated wihtin a jinja2 expression, so a lambda "proxy" is
+        # is needed, apparently.
+        'relativedelta': lambda *a, **kw : relativedelta.relativedelta(*a, **kw),
+    })
+except ImportError:
+    _logger.warning("jinja2 not available, templating features will not work!")
 
 class eCommerceProductSample(models.AbstractModel):
     _name = 'ecommerce.product.sample'
@@ -94,6 +149,113 @@ class eCommerceProductTemplate(models.Model):
     product_product_id = fields.Many2one('product.product', string=_("Single Variant"))
     ecomm_product_product_ids = fields.One2many('ecommerce.product.product', 'ecomm_product_tmpl_id', string=_("Variants"))
     auto_update_stock = fields.Boolean(default=True)
+
+    model_object_field = fields.Many2one('ir.model.fields', string="Field",
+                                         help="Select target field from the related document model.\n"
+                                              "If it is a relationship field you will be able to select "
+                                              "a target field at the destination of the relationship.")
+    sub_object = fields.Many2one('ir.model', 'Sub-model', readonly=True,
+                                 help="When a relationship field is selected as first field, "
+                                      "this field shows the document model the relationship goes to.")
+    sub_model_object_field = fields.Many2one('ir.model.fields', 'Sub-field',
+                                             help="When a relationship field is selected as first field, "
+                                                  "this field lets you select the target field within the "
+                                                  "destination document model (sub-model).")
+    null_value = fields.Char('Default Value', help="Optional value to use if the target field is empty")
+    copy_value = fields.Char('Placeholder Expression', help="Final placeholder expression, to be copy-pasted in the desired template field.")
+    lang = fields.Char('Language',
+                       help="Optional translation language (ISO code) to select when sending out an email. "
+                            "If not set, the english version will be used. "
+                            "This should usually be a placeholder expression "
+                            "that provides the appropriate language, e.g. "
+                            "${object.partner_id.lang}.",
+                       placeholder="${object.partner_id.lang}")
+    
+    def build_expression(self, field_name, sub_field_name, null_value):
+        expression = ''
+        if field_name:
+            expression = "${object." + field_name
+            if sub_field_name:
+                expression += "." + sub_field_name
+            if null_value:
+                expression += " or '''%s'''" % null_value
+            expression += "}"
+        return expression
+
+    @api.onchange('model_object_field', 'sub_model_object_field', 'null_value')
+    def onchange_sub_model_object_value_field(self):
+        if self.model_object_field:
+            if self.model_object_field.ttype in ['many2one', 'one2many', 'many2many']:
+                model = self.env['ir.model']._get(self.model_object_field.relation)
+                if model:
+                    self.sub_object = model.id
+                    self.copy_value = self.build_expression(self.model_object_field.name, self.sub_model_object_field and self.sub_model_object_field.name or False, self.null_value or False)
+            else:
+                self.sub_object = False
+                self.sub_model_object_field = False
+                self.copy_value = self.build_expression(self.model_object_field.name, False, self.null_value or False)
+        else:
+            self.sub_object = False
+            self.copy_value = False
+            self.sub_model_object_field = False
+            self.null_value = False
+
+    def _render_template(self, template_txt):
+        self.ensure_one()
+        try:
+            template = mako_template_env.from_string(tools.ustr(template_txt))
+        except Exception:
+            _logger.info("Failed to load template %r", template_txt, exc_info=True)
+            raise UserError(_("Failed to load template %r")% template)
+
+        # prepare template variables
+        variables = {
+            'format_date': lambda date, format=False, context=self._context: format_date(self.env, date, format),
+            'format_tz': lambda dt, tz=False, format=False, context=self._context: format_tz(self.env, dt, tz, format),
+            'format_amount': lambda amount, currency, context=self._context: format_amount(self.env, amount, currency),
+            'user': self.env.user,
+            'ctx': self._context,  # context kw would clash with mako internals
+        }
+        variables['object'] = self
+        try:
+            render_result = template.render(variables)
+        except Exception:
+            _logger.info("Failed to render template %r using values %r" % (template, variables), exc_info=True)
+            raise UserError(_("Failed to render template %r using values %r")% (template, variables))
+
+        return render_result
+
+    def get_template(self):
+        self.ensure_one()
+        lang =  self._render_template(self.lang)
+        if lang:
+            template = self.with_context(lang=lang)
+        else:
+            template = self
+        return template
+
+    def generate_values(self, fields=None):
+        self.ensure_one()
+        if fields is None: 
+            fields = ['name','description']
+        template = self.get_template()
+        _logger.info(template)
+        
+        return {field: template._render_template(getattr(template, field)) for field in fields}
+
+    def preview(self):
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "res_model": "ecommerce.product.preview",
+            "views": [[False, "form"]],
+            "res_id": self.env['ecommerce.product.preview'].create(self.generate_values()).id,
+            "target": "new",
+        }
+
+    def update_info(self, data={}):
+        for p in self:
+            getattr(p, "_update_info_{}".format(p.platform_id.platform))(data=data)
 
     def update_stock(self):
         platform_id = self.mapped('platform_id')

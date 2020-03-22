@@ -76,6 +76,16 @@ class ShopeeProductTemplate(models.Model):
         shop_id._py_client_shopee().item.update_stock_batch(items = items)
         if len(self) > 50: (self-limit)._update_item_stock_shopee()
 
+    def _update_info_shopee(self, data={}):
+        self.ensure_one()
+        data.update({
+            'item_id':  int(self.platform_item_idn),
+            'name': self.name,
+            'description': self.description,
+            })
+        self.shop_id._py_client_shopee().item.update_item(data)
+
+
 
 
 class ShopeeProductProduct(models.Model):
