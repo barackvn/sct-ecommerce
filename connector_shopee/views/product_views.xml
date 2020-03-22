@@ -10,13 +10,14 @@
                 <xpath expr="//group[@name='shop']" position="after">
                     <group name="shopee" string="Shopee" col="4">
                         <field name="shopee_product_sample_id" attrs="{'invisible': [('shopee_product_sample_id','=', False)]}"/>
-                        <button name="%(connector_ecommerce_common.ecomm_category_selector_view_action)d" string="Create Shopee Product Sample" type="action" context="{'default_platf_id': 1, 'product_tmpl_id': active_id}" attrs="{'invisible': [('shopee_product_sample_id','!=', False)]}"/>
+                        <button name="%(connector_ecommerce_common.ecomm_category_selector_view_action)d" string="Create Shopee Product Sample" type="action" context="{'default_platform_id': 1, 'product_tmpl_id': active_id}" attrs="{'invisible': [('shopee_product_sample_id','!=', False)]}"/>
                         <label for="shopee_product_tmpl_ids" string="Synchronized Items" colspan="4"/>
                         <field name="shopee_product_tmpl_ids" nolabel="1" widget="one2many_list" colspan="4">
-                            <tree create="0" string="Items" editable="1">
+                            <tree create="0" string="Items">
                                 <field name="name"/>
-                                <field name="platf_item_idn"/>
+                                <field name="platform_item_idn"/>
                                 <field name="shop_id"/>
+                                <field name="auto_update_stock" widget="boolean_toggle"/>
                                 <button name="update_stock" type="object" string="Update Stock"/>
                             </tree>
                         </field>

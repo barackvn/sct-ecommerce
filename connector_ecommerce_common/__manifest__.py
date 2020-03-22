@@ -20,14 +20,15 @@
     'version': '0.1',
 
     # any module necessary for this one to work correctly
-    'depends': ['website_sale'],
+    'depends': ['website_sale','delivery'],
 
     # always loaded
     'data': [
         'security/ir.model.access.csv',
         'views/ecommerce_config_views.xml',
         'views/ecommerce_shop_views.xml',
-        'wizard/ecommerce_category_selector_views.xml'
+        'wizard/ecommerce_category_selector_views.xml',
+        'data/cron.xml',
     ],
     # only loaded in demonstration mode
     'demo': [

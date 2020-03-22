@@ -8,7 +8,9 @@
             <field name="arch" type="xml">
                 <tree string="eCommerce Shop">
                     <field name="name"/>
-                    <field name="platf_id"/>
+                    <field name="ecomm_shop_name"/>
+                    <field name="platform_id"/>
+                    <field name="state"/>
                 </tree>
             </field>
         </record>
@@ -19,14 +21,17 @@
             <field name="arch" type="xml">
                 <form string="eCommerce Shop">
                     <header>
+                        <button name="auth" string="Authorized" type="object" class="btn-primary" states='no, deauth'/>
+                        <button name="deauth" string="Deauthorized" type="object" class="btn-danger" states='auth'/>
                         <field name="state" widget="statusbar"/>
                     </header>
                     <group>
                         <field name="name"/>
                         <field name="ecomm_shop_name"/>
-                        <field name="platf_id"/>
+                        <field name="platform_id"/>
                         <field name="ecomm_shop_idn"/>
                         <field name="is_main"/>
+                        <field name="auto_update_stock" widget="boolean_toggle"/>
                     </group>
                 </form>
             </field>

@@ -1,6 +1,7 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_ecommerce_platform,base_ecommerce_client.ecommerce_platform,model_ecommerce_platform,,1,1,1,1
 access_ecommerce_category,base_ecommerce_client.ecommerce_category,model_ecommerce_category,,1,1,1,1
+access_ecommerce_carrier,base_ecommerce_client.ecommerce_carrier,model_ecommerce_carrier,,1,1,1,1
 access_ecommerce_product_sample,base_ecommerce_client.ecommerce_product_sample,model_ecommerce_product_sample,,1,1,1,1
 access_ecommerce_product_template,base_ecommerce_client.ecommerce_product_template,model_ecommerce_product_template,,1,1,1,1
 access_ecommerce_product_product,base_ecommerce_client.ecommerce_product_product,model_ecommerce_product_product,,1,1,1,1

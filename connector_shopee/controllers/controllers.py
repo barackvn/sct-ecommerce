@@ -18,7 +18,17 @@ class ShopeeController(eCommerceController):
         #_logger.info(cal_auth)
         #if cal_auth == authorization:
         if True:
-            if json_data.get('code',0) == 3:
+            if json_data.get('code',0) == 1:
+                if json_data.get('success'): http.request.env['ecommerce.shop'].sudo().search([
+                    ('platform_id','=',platform.id),
+                    ('ecomm_shop_idn','=', json_data.get('shop_id'))
+                    ]).write({'state': 'auth'})
+            elif json_data.get('code',0) == 2:
+                if json_data.get('success'): http.request.env['ecommerce.shop'].sudo().search([
+                    ('platform_id','=',platform.id),
+                    ('ecomm_shop_idn','=', json_data.get('shop_id'))
+                    ]).write({'state': 'deauth'})
+            elif json_data.get('code',0) == 3:
                 data = json_data.get("data",{})
                 http.request.env['ecommerce.shop'].sudo().search([
                     ('platform_id','=',platform.id),
@@ -27,6 +37,23 @@ class ShopeeController(eCommerceController):
             return http.Response(status=202)
         else:
             return http.Response(status=500)
+    
+    @http.route('/connector_ecommerce/<model("ecommerce.shop"):shop>/auth', auth='public')
+    def auth_callback(self, shop, **kw):
+        #fix security later
+        shop = shop.sudo()
+        shop.write({
+            'ecomm_shop_idn': kw.get('shop_id'),
+            'state': 'auth'})
+        shop._get_info_shopee()
+        return 'Successfully authorized!'
+
+    @http.route('/connector_ecommerce/<model("ecommerce.shop"):shop>/deauth', auth='public')
+    def deauth_callback(self, shop, **kw):
+        #fix security later
+        shop = shop.sudo()
+        shop.write({'state': 'deauth'})
+        return 'Successfully deauthorized!'
 
 #class ShopeeController(http.Controller):
 #    @http.route('/ecommerce/shopee/shop/<model("shopee_server.shop"):shop>/retrieve/', auth='public')

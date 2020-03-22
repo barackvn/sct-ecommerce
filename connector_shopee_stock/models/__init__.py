@@ -1,3 +1,4 @@
 # -*- coding: utf-8 -*-
 
-from . import shopee_shop
+from . import ecommerce_shop
+from . import stock_picking

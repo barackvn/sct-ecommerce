@@ -5,8 +5,8 @@ from odoo import fields, models, api, _
 class eCommerceCategorySelector(models.TransientModel):
     _name = 'ecommerce.category.selector'
 
-    platf_id = fields.Many2one('ecommerce.platform')
-    tier1 = fields.Many2one('ecommerce.category', domain="[('platf_id', '=', platf_id),('parent_id','=',False)]")
+    platform_id = fields.Many2one('ecommerce.platform')
+    tier1 = fields.Many2one('ecommerce.category', domain="[('platform_id', '=', platform_id),('parent_id','=',False)]")
     tier2 = fields.Many2one('ecommerce.category', domain="[('parent_id', '=', tier1)]")
     tier3 = fields.Many2one('ecommerce.category', domain="[('parent_id', '=', tier2)]")
     tier4 = fields.Many2one('ecommerce.category', domain="[('parent_id', '=', tier3)]")
@@ -32,4 +32,4 @@ class eCommerceCategorySelector(models.TransientModel):
 
     def action_create_sample(self):
         self.ensure_one()
-        return getattr(self, "_action_create_sample_{}".format(self.platf_id.platform))() 
+        return getattr(self, "_action_create_sample_{}".format(self.platform_id.platform))() 

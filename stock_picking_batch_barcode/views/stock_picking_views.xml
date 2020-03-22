@@ -1,17 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 
 <odoo>
-    <record model="ir.ui.view" id="stock_picking_tree_inherit">
-        <field name="name">stock.picking.tree.inherit</field>
-        <field name="model">stock.picking</field>
-        <field name="inherit_id" ref="stock_picking_batch.vpicktree_inherit_stock_picking_batch"/>
-        <field name="arch" type="xml">
-            <xpath expr="//field[@name='batch_id']" position="replace">
-                <field name="process_datetime"/>
-                <field name="carrier_tracking_ref"/>
-            </xpath>
-        </field>
-    </record>
     <record model="ir.ui.view" id="stock_picking_search_inherit">
         <field name="name">stock.picking.search.inherit</field>
         <field name="model">stock.picking</field>
@@ -20,6 +9,17 @@
         <field name="arch" type="xml">
             <xpath expr="//field[@name='name']" position="attributes">
                 <attribute name="filter_domain">['|','|',('name','ilike', self),('origin','ilike',self),('carrier_tracking_ref','=',self)]</attribute>
+            </xpath>
+        </field>
+    </record>
+    <record model="ir.ui.view" id="stock_picking_tree_inherit">
+        <field name="name">stock.picking.tree.inherit</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.vpicktree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='origin']" position="after">
+                <field name="carrier_id"/>
+                <field name="carrier_tracking_ref"/>
             </xpath>
         </field>
     </record>

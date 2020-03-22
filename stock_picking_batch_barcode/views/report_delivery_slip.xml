@@ -1,0 +1,24 @@
+<odoo>
+    <template id="report_delivery_document_barcode" inherit_id="delivery.report_delivery_document2">
+        <xpath expr="//th[@t-if='o.carrier_tracking_ref']" position="attributes">
+            <attribute name="class">text-center</attribute>
+        </xpath>
+        <xpath expr="//td[@t-if='o.carrier_tracking_ref']" position="replace">
+            <td t-if="o.carrier_tracking_ref" class="text-center">
+                <!--img t-att-src="'/report/barcode/?type=%s&amp;value=%s&amp;width=%s&amp;height=%s&amp;humanreadable=%s' % ('Code128', o.carrier_tracking_ref, 600, 120, 1)" style="width: 500px; height: 100px;" alt="Barcode"/-->
+                <!--span t-field="o.carrier_tracking_ref_barcode" t-field-options="{&quot;widget&quot;: &quot;image&quot;}"/-->
+                <img  t-att-src="image_data_uri(o.carrier_tracking_ref_barcode)" style="width: 500px; height: 100px;" alt="Barcode"/>
+            </td>
+        </xpath>
+    </template>
+
+    <template id="report_delivery_document_sale_note" inherit_id="stock.report_delivery_document">
+        <xpath expr="//div[hasclass('page')]" position="inside">
+            <div t-if="o.sudo().sale_id.note">
+                <strong>Note:</strong>
+                <span t-field="o.sudo().sale_id.note"/>
+            </div>
+        </xpath>
+    </template>
+</odoo>
+

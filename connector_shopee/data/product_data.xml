@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<odoo>
+    <data>
+        <record model="product.product" id="shopee_product_product_default">
+            <field name="name">Shopee Default Product</field>
+            <field name="default_code">SHOPEE</field>
+            <field name="type">consu</field>
+        </record>
+    </data>
+</odoo>
+
+

@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 {
-    'name': "Stock Delivery Extend",
+    'name': "Stock Picking Batch Barcode",
 
     'summary': """
-        Delivery Tracking Reference as Barcode, Allow adding picking to batch by scanning Tracking Barcode""",
+        Allow quick set done quantity picking to batch by scanning Tracking Barcode""",
 
     'description': """
         Long description of module's purpose
@@ -19,15 +19,16 @@
     'version': '0.1',
 
     # any module necessary for this one to work correctly
-    'depends': ['barcodes','stock_picking_batch_extended'],
+    'depends': ['barcodes','delivery','stock_picking_batch'],
 
     # always loaded
     'data': [
         # 'security/ir.model.access.csv',
         'views/stock_picking_views.xml',
-        'views/stock_picking_batch_views.xml'
-        #'views/views.xml',
-        #'views/templates.xml',
+        'views/stock_picking_batch_views.xml',
+        'views/report_delivery_slip.xml',
+        'views/report_picking_batch.xml',
+        'views/templates.xml',
     ],
     # only loaded in demonstration mode
     'demo': [

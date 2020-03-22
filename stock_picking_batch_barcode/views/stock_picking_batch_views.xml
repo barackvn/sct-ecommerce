@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<odoo>
+    <record model="ir.ui.view" id="stock_picking_batch_form_inherit">
+        <field name="name">stock.picking.batch.form.inherit</field>
+        <field name="model">stock.picking.batch</field>
+        <field name="inherit_id" ref="stock_picking_batch.stock_picking_batch_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/div[1]" position="before">
+                <div class="text-center">
+                    <div class="alert alert-success" attrs="{'invisible': [('message_type', '!=', 'success')]}">
+                        <field name="message"/>
+                    </div>
+                    <div class="alert alert-info" attrs="{'invisible': [('message_type', '!=', 'info')]}">
+                        <field name="message"/>
+                    </div>
+                    <div class="alert alert-danger" attrs="{'invisible': [('message_type', 'not in', ['more_match','error'])]}">
+                        <field name="message"/>
+                    </div>
+                </div>
+                <div class="oe_button_box" name="button_box">
+                    <button name="%(stock.action_picking_tree_all)d" string="Quantities Done Pickings" type="action" class="oe_stat_button" icon="fa-truck" context="{'search_default_batch_id': active_id, 'search_default_all_quantities_done': True}"/>
+                </div>
+                <field name="message_type" invisible="1" />
+                <field name="alert" invisible="1" readonly="1"/>
+                <field name="_barcode_scanned" widget="barcode_handler" invisible="1"/>
+            </xpath>
+            <xpath expr="//button[@name='print_picking']" position="after">
+                <button name="print_delivery" type="object" string="Delivery Slip" class="btn-primary"/>
+            </xpath>
+            <xpath expr="//field[@name='backorder_id']" position="replace"/>
+            <xpath expr="//field[@name='date']" position="replace"/>
+            <xpath expr="//button[@name='action_cancel']" position="replace"/>
+            <xpath expr="//field[@name='picking_ids']/tree/field[@name='state']" position="before">
+                <field name="carrier_id"/>
+                <field name="carrier_tracking_ref"/>
+                <field name="all_quantities_done" string="Done" widget="boolean_toggle"/>
+            </xpath>
+            <xpath expr="//field[@name='picking_ids']/tree" position="attributes">
+                <attribute name="decoration-success">all_quantities_done</attribute>
+            </xpath>
+        </field>
+    </record>
+</odoo>

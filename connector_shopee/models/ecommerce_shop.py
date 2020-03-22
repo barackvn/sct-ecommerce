@@ -8,18 +8,33 @@ _logger = logging.getLogger(__name__)
 class eCommercerShop(models.Model):
     _inherit = 'ecommerce.shop'
 
-#    @api.multi
-#    def auth(self):
-#        self.ensure_one()
+    def _auth_shopee(self):
+        self.ensure_one()
 #        client_name = self._cr.dbname
-#        url = "https://shopee.scaleup.top/shopee_server/shop/request"
-#        for shop in self:
-#            req = requests.post(url=url, data={'client':client_name,'client_shop_id': shop.id, 'name': shop.name})
-#            return {
-#                "type": "ir.actions.act_url",
-#                "url": req.text,
-#                "target": "new",
-#            }
+        redirect_url = "https://nutishop.scaleup.top/connector_ecommerce/{}/auth".format(self.id)
+#        req = requests.post(url=url, data={'client':client_name,'client_shop_id': self.id, 'name': self.name})
+        return {
+            "type": "ir.actions.act_url",
+            "url": self._py_client_shopee().shop.authorize(redirect_url=redirect_url),
+            "target": "new",
+        }
+
+    def _deauth_shopee(self):
+        self.ensure_one()
+        redirect_url = "https://nutishop.scaleup.top/connector_ecommerce/{}/deauth".format(self.id)
+        return {
+            "type": "ir.actions.act_url",
+            "url": self._py_client_shopee().shop.cancel_authorize(redirect_url=redirect_url),
+            "target": "new",
+        }
+
+    def _get_info_shopee(self):
+        self.ensure_one()
+        resp = self._py_client_shopee().shop.get_shop_info()
+        self.write({
+            'ecomm_shop_name': resp.get('shop_name')
+            })
+        if not self.name: self.name = self.ecomm_shop_name
 
 #    def test(self):
 #        _logger.info(self.ids)
@@ -31,11 +46,11 @@ class eCommercerShop(models.Model):
 
     def _py_client_shopee(self):
         self.ensure_one()
-        return pyshopee.Client(self.ecomm_shop_idn, self.platf_id.partner_id, self.platf_id.key)
+        return pyshopee.Client(self.ecomm_shop_idn, self.platform_id.partner_id, self.platform_id.key)
 
     def _get_categories_shopee(self):
         #should use ref, later
-        platf_id = self.env['ecommerce.platform'].search([('platform', '=','shopee')])[:1].id
+        platform_id = self.env['ecommerce.platform'].search([('platform', '=','shopee')])[:1].id
         
         categs = self._py_client_shopee().item.get_categories().get('categories')
         path = [(False,0)] # categ (id,idn)
@@ -47,31 +62,31 @@ class eCommercerShop(models.Model):
                 path.pop()
             if not path:
                 path = temp[:]
-                temp_parent = self.env['ecommerce.category'].search([('platf_id','=', platf_id),('platf_categ_idn','=',categ['parent_id'])])[:1]
+                temp_parent = self.env['ecommerce.category'].search([('platform_id','=', platform_id),('platform_categ_idn','=',categ['parent_id'])])[:1]
                 if temp_parent:
                     vals = {
                         'name': categ['category_name'],
-                        'platf_id': platf_id,
-                        'platf_categ_idn': categ['category_id'],
-                        'platf_parent_categ_idn': categ['parent_id'],
+                        'platform_id': platform_id,
+                        'platform_categ_idn': categ['category_id'],
+                        'platform_parent_categ_idn': categ['parent_id'],
                         'parent_id': temp_parent.id
                         }
                     self.env['ecommerce.category'].create(vals)
                 else:
                     vals = {
                         'name': categ['category_name'],
-                        'platf_id': platf_id,
-                        'platf_categ_idn': categ['category_id'],
-                        'platf_parent_categ_idn': categ['parent_id']
+                        'platform_id': platform_id,
+                        'platform_categ_idn': categ['category_id'],
+                        'platform_parent_categ_idn': categ['parent_id']
                         }
                     need_prnt.append(self.env['ecommerce.category'].create(vals))
 
             else:
                 vals = {
                     'name': categ['category_name'],
-                    'platf_id': platf_id,
-                    'platf_categ_idn': categ['category_id'],
-                    'platf_parent_categ_idn': categ['parent_id'],
+                    'platform_id': platform_id,
+                    'platform_categ_idn': categ['category_id'],
+                    'platform_parent_categ_idn': categ['parent_id'],
                     'parent_id': path[-1][0]
                     }
                 rec = self.env['ecommerce.category'].create(vals)
@@ -79,31 +94,31 @@ class eCommercerShop(models.Model):
 
         for categ in need_prnt:
             categ.parent_id = self.env['ecommerce.category'].search([
-                ('platf_id','=',platf_id),
-                ('platf_categ_idn','=',categ.platf_parent_categ_idn)])[:1]
+                ('platform_id','=',platform_id),
+                ('platform_categ_idn','=',categ.platform_parent_categ_idn)])[:1]
 
     def _sync_product_unlink_diff_shopee(self):
         self.ensure_one()
-        platf_id = self.env['ecommerce.platform'].search([('platform', '=','shopee')])[:1].id
+        platform_id = self.env['ecommerce.platform'].search([('platform', '=','shopee')])[:1].id
         for tmpl in self.ecomm_product_tmpl_ids:
-            resp = self._py_client_shopee().item.get_item_detail(item_id=int(tmpl.platf_item_idn))
+            resp = self._py_client_shopee().item.get_item_detail(item_id=int(tmpl.platform_item_idn))
             item = resp.get('item')
             if any((
                 resp.get('error') == "error_not_exists",
                 item and not item['item_sku'] and all((not v["variation_sku"] for v in item["variations"])),
-                item and item['item_sku'] != tmpl.product_tmpl_id.default_code and all((v["variation_sku"] not in  tmpl.product_tmpl_id.product_variant_ids.mapped('default_code') for v in item["variations"]))
+                item and item['item_sku'] not in tmpl.product_tmpl_id.product_variant_ids.mapped('default_code') and all((v["variation_sku"] not in  tmpl.product_tmpl_id.product_variant_ids.mapped('default_code') for v in item["variations"]))
                 )):  tmpl.unlink()
             
 
     def _sync_product_sku_match_shopee(self, offset=0, limit=100):
         self.ensure_one()
-        platf_id = self.env['ecommerce.platform'].search([('platform', '=','shopee')])[:1].id
+        platform_id = self.env['ecommerce.platform'].search([('platform', '=','shopee')])[:1].id
         resp = self._py_client_shopee().item.get_item_list(pagination_offset=offset, pagination_entries_per_page=limit)
         items = resp.get('items')
 
         for item in items:
             item_idn = str(item.get('item_id',0))
-            _logger.info(item.get('item_sku'))
+#            _logger.info(item.get('item_sku'))
             if item.get("variations",[]): 
                 tmpls = self.env['product.template'].search([
                     ('product_variant_ids.default_code','in',[v.get("variation_sku",False)]) for v in item.get("variations",[])
@@ -111,50 +126,50 @@ class eCommercerShop(models.Model):
                 if tmpls: 
                     details = self._py_client_shopee().item.get_item_detail(item_id=item.get('item_id',0)).get('item',{})
                 for tmpl in tmpls:
-                    if item_idn not in tmpl.shopee_product_tmpl_ids.mapped('platf_item_idn'):
+                    if item_idn not in tmpl.shopee_product_tmpl_ids.mapped('platform_item_idn'):
                         self.env['ecommerce.product.template'].create({
                             'name': details.get('name',False),
                             'description': details.get('description',False),
                             'shop_id': self.id,
-                            'platf_item_idn': item_idn,
+                            'platform_item_idn': item_idn,
                             'product_tmpl_id': tmpl.id,
                             'ecomm_product_product_ids': [(0, _, {
                                 'name': v.get('name'),
-                                'platf_variant_idn': str(v.get('variation_id')),
+                                'platform_variant_idn': str(v.get('variation_id')),
                                 'product_product_id': tmpl.product_variant_ids.filtered(lambda r: r.default_code == v.get("variation_sku"))[:1].id,
                                 }) for v in details.get("variations", [])],
                             })
                         if not tmpl.shopee_product_sample_id:
                             details.update({
-                                'platf_id': platf_id,
+                                'platform_id': platform_id,
                                 'ecomm_categ_id': self.env['ecommerce.category'].search([
-                                    ('platf_id','=',platf_id),
-                                    ('platf_categ_idn','=',details.get('category_id'))
+                                    ('platform_id','=',platform_id),
+                                    ('platform_categ_idn','=',details.get('category_id'))
                                     ]).id,
                                 'product_tmpl_id': tmpl.id,
                                 })
                             self.env['shopee.product.sample'].create(details)
             elif item.get('item_sku',''): 
                 prods = self.env['product.product'].search([('default_code','=',item.get('item_sku','').strip())])
-                _logger.info(prods)
+#                _logger.info(prods)
                 if prods: 
                     details = self._py_client_shopee().item.get_item_detail(item_id=item.get('item_id',0)).get('item',{})
                 for prod in prods:
-                    if item_idn not in prod.product_tmpl_id.shopee_product_tmpl_ids.mapped('platf_item_idn'):
+                    if item_idn not in prod.product_tmpl_id.shopee_product_tmpl_ids.mapped('platform_item_idn'):
                         self.env['ecommerce.product.template'].create({
                             'name': details.get('name',False),
                             'description': details.get('description',False),
                             'shop_id': self.id,
-                            'platf_item_idn': item_idn,
+                            'platform_item_idn': item_idn,
                             'product_tmpl_id': prod.product_tmpl_id.id,
                             'product_product_id': prod.id,
                             })
                         if not prod.product_tmpl_id.shopee_product_sample_id:
                             details.update({
-                                'platf_id': platf_id,
+                                'platform_id': platform_id,
                                 'ecomm_categ_id': self.env['ecommerce.category'].search([
-                                    ('platf_id','=',platf_id),
-                                    ('platf_categ_idn','=',details.get('category_id'))
+                                    ('platform_id','=',platform_id),
+                                    ('platform_categ_idn','=',details.get('category_id'))
                                     ]).id,
                                 'product_tmpl_id': prod.product_tmpl_id.id,
                                 })
@@ -171,8 +186,8 @@ class eCommercerShop(models.Model):
             else: shop._update_order_shopee(ordersn, status, update_time)
             return True
 
-    def _new_order_shopee(self, ordersn, status, update_time):
-        resp = self._py_client_shopee().order.get_order_detail(ordersn_list=[ordersn])
+    def _new_order_shopee(self, ordersn, status, update_time, resp = False):
+        resp = resp or self._py_client_shopee().order.get_order_detail(ordersn_list=[ordersn])
         shopee_orders = resp.get('orders')
         shopee_order = shopee_orders[0]
         partner_vals = {
@@ -188,12 +203,12 @@ class eCommercerShop(models.Model):
                 'client_order_ref': ordersn,
                 'partner_id': self.env['res.partner'].search([('phone','=',partner_vals['phone'])])[:1].id or self.env['res.partner'].create(partner_vals).id,
                 'order_line':[(0, _, {
-                    'product_id' : self.env['product.product'].search([('default_code','=',item['variation_sku'] or item['item_sku'])])[:1].id or self.env['product.product'].create({
-                        'name': item['variation_name'] or item['item_name'],
-                        'default_code': item['variation_sku'] or item['item_sku'],
-                        'lst_price': item['variation_original_price'],
-                        'type': 'product',
-                        }).id,
+                    'product_id' : item['variation_id'] and self.env['ecommerce.product.product'].search([
+                        ('platform_variant_idn','=',str(item['variation_id']))
+                    ]).product_product_id.id or self.env['ecommerce.product.template'].search([
+                        ('platform_item_idn','=',str(item['item_id']))
+                    ]).product_product_id.id or self.env.ref("connector_shopee.shopee_product_product_default").id,
+                    'name': '{}{}'.format(item['item_name'], item.get('variation_name',False) and ' ({})'.format(item['variation_name']) or ''),
                     'price_unit': item['variation_discounted_price'] != '0' and item['variation_discounted_price'] or item['variation_original_price'],
                     'product_uom_qty': item['variation_quantity_purchased'],
                     #'route_id': self.route_id.id,
@@ -204,7 +219,7 @@ class eCommercerShop(models.Model):
 
 
     def _update_order_shopee(self, ordersn, status, update_time):
-        order = self.env['sale.order'].search([('ecommerce_shop_id','=',self.id),('client_order_ref','=',ordersn)])[:1] or self.new_order(ordersn, status, update_time)
+        order = self.env['sale.order'].search([('ecommerce_shop_id','=',self.id),('client_order_ref','=',ordersn)])[:1] or self._new_order_shopee(ordersn, status, update_time)
         if status in ['READY_TO_SHIP','SHIPPED']:
             if order.state == 'draft': order.action_confirm()
         elif status == 'CANCELLED':

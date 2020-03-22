@@ -1,0 +1,116 @@
+<odoo>
+    <data>
+        <template id="report_picking_batch_short" inherit_id="stock_picking_batch.report_picking_batch">
+            <xpath expr="//div[@t-if='o.user_id']" position="replace">
+                <div class="row">
+                    <div class="col-5" t-if="o.user_id">
+                        <strong>Responsible:</strong>
+                        <span t-field="o.user_id"/>
+                    </div>
+                    <div class="col-2">
+                        <strong>Count:</strong>
+                        <span t-esc="len(o.picking_ids)"/>
+                    </div>
+                    <div class="col-5">
+                        <strong>Confirm:</strong>
+                    </div>
+                </div>
+            </xpath>
+            <xpath expr="//div[hasclass('page')]/table[1]" position="replace">
+                <table class="table table-condensed">
+                    <thead>
+                        <tr>
+                            <th class="border-left">Picking</th>
+                            <th class="border-right">Tracking</th>
+                            <th class="border-left">Picking</th>
+                            <th class="border-right">Tracking</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <t t-foreach="o.picking_ids" t-as="pick">
+                                <td class="border-left border-bottom">
+                                    <span t-field="pick.name"/>
+                                </td>
+                                <td class="border-right border-bottom">
+                                    <span t-field="pick.carrier_tracking_ref"/>
+                                </td>
+                                <t t-if="pick_index %2 == 1">
+                                    &lt;/tr&gt;
+                                    &lt;tr&gt;
+                                </t>
+                            </t>
+                        </tr>
+                    </tbody>
+                </table>
+            </xpath>
+            <xpath expr="//t[@t-foreach='locations']/table[1]" position="replace">
+                <table class="table table-condensed">
+                    <thead>
+                        <tr>
+                            <th class="col-5">Product</th>
+                            <th class="col-1">Quantity</th>
+                            <th class="col-2">Destination</th>
+                            <th class="col-2">Picking</th>
+                            <th t-if="has_serial_number" class="col">
+                                <strong>Lot/Serial Number</strong>
+                            </th>
+                            <th t-if="has_package" class="col">
+                                <strong>Package</strong>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-set="loc_move_line" t-value="loc_move_line.sorted(key=lambda l: (l.product_id.display_name, l.lot_id.name or l.lot_name, l.result_package_id.name))"/>
+                        <t t-set="lines_list" t-value="[]"/>
+                        <t t-set="lines" t-value="loc_move_line[:1]"/>
+                        <t t-foreach="loc_move_line[1:]" t-as="l">
+                            <t t-if="all([l.product_id == loc_move_line[l_index].product_id,(l.lot_id or l.lot_name) == (loc_move_line[l_index].lot_id or loc_move_line[l_index].lot_name), l.result_package_id == loc_move_line[l_index].result_package_id])">
+                                <t t-set="lines" t-value="lines | l"/>
+                            </t>
+                            <t t-else="">
+                                <t t-set="lines_list" t-value="lines_list+[lines]"/>
+                                <t t-set="lines" t-value="l"/>
+                            </t>
+                        </t>
+                        <t t-set="lines_list" t-value="lines_list+[lines]"/>
+                        <tr t-foreach="lines_list" t-as="move_operation">
+                            <td>
+                                <span t-field="move_operation[0].display_name"/>
+                            </td>
+                            <td>
+                                <t t-if="not has_package">
+                                    <t t-if="any(move_operation.filtered(lambda l: l.state == 'done'))">
+                                        <span t-esc="sum(move_operation.mapped('qty_done'))"/>
+                                    </t>
+                                    <t t-else="">
+                                        <span t-esc="sum(move_operation.mapped('product_uom_qty'))"/>
+                                    </t>
+                                </t>
+                                <t t-if="has_package">
+                                    <span t-esc="sum(move_operation.mapped('qty_done'))"/>
+                                </t>
+                                <span t-field="move_operation[0].product_uom_id" groups="uom.group_uom"/>
+                            </td>
+                            <td>
+                                <span t-esc="', '.join(move_operation.mapped('location_dest_id.display_name'))"/>
+                            </td>
+                            <td>
+                                <span t-esc="', '.join(move_operation.mapped('picking_id.display_name'))"/>
+                            </td>
+                            <td t-if="has_serial_number and move_operation[0].lot_id">
+                                <span t-field="move_operation[0].lot_id"/>
+                            </td>
+                            <td t-if="has_package">
+                                <span t-field="move_operation[0].package_id"/>
+                                <t t-if="move_operation[0].result_package_id">
+                                    → <span t-field="move_operation[0].result_package_id"/>
+                                </t>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </xpath>
+        </template>
+    </data>
+</odoo>

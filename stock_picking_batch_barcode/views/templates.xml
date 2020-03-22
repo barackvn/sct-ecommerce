@@ -1,5 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
+        <template id="assets_backend" name="barcode extend assets" inherit_id="barcodes.assets_backend">
+            <xpath expr="//script[contains(@src,'barcode_events.js')]" position="replace">
+                <script type="text/javascript" src="/stock_picking_batch_barcode/static/src/js/barcode_events.js"></script>
+            </xpath>
+        </template>
         <!-- <template id="listing"> -->
         <!--   <ul> -->
         <!--     <li t-foreach="objects" t-as="object"> -->

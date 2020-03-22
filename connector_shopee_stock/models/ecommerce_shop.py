@@ -20,7 +20,11 @@ class eCommerceShop(models.Model):
 #        return True
 
     def _new_order_shopee(self, ordersn, status, update_time):
-        order = super(eCommerceShop, self)._new_order_shopee(ordersn, status, update_time)
+        resp = self._py_client_shopee().order.get_order_detail(ordersn_list=[ordersn])
+        order = super(eCommerceShop, self)._new_order_shopee(ordersn, status, update_time, resp=resp)
+        order.carrier_id = self.env['ecommerce.carrier'].search([
+            ('name','=', resp.get('orders') and resp['orders'][0].get('shipping_carrier'))
+            ])[:1].carrier_id
         for line in order.order_line:
             line.route_id = self.env.ref('connector_shopee_stock.stock_location_route_shopee')
         return order
@@ -61,11 +65,33 @@ class eCommerceShop(models.Model):
             ('state','=', 'sale'),
             ('need_tracking_no','=',True),
             ('confirmation_date','>',(datetime.now()-timedelta(days=15)).strftime("%Y-%m-%d %H:%M:%S"))
-            ], limit=100)
+            ], limit=200)
         for order in orders:
-            logistic = order.ecommerce_shop._py_client_shopee().logistic.get_order_logistic(ordersn=order.client_order_ref).get('logistics')
+            logistic = order.ecommerce_shop_id._py_client_shopee().logistic.get_order_logistic(ordersn=order.client_order_ref).get('logistics')
             if logistic:
-                order.picking_ids.filtered(lambda r: r.state not in ['done', 'cancel']).write({
+                vals = {
                     'carrier_tracking_ref': logistic['tracking_no'],
-                    })
+                    'carrier_id': order.carrier_id.id,
+                    }
+                if not order.carrier_id: 
+                    order.carrier_id = self.env['ecommerce.carrier'].search([('logistic_idn','=', logistic['logistic_id'])])[:1].carrier_id
+                    vals.update({'carrier_id': order.carrier_id.id})
+                order.picking_ids.filtered(lambda r: r.state not in ['done', 'cancel']).write(vals)
                 order.need_tracking_no = False
+
+    def _get_logistic_shopee(self):
+        self.ensure_one()
+        logistics = self._py_client_shopee().logistic.get_logistics().get('logistics',[])
+        for l in logistics:
+            self.env['ecommerce.carrier'].create({
+                'name': l.get('logistic_name'),
+                'logistic_idn': l.get('logistic_id'),
+                'enable': l.get('enabled'),
+                'default': l.get('preferred'),
+                'cod': l.get('has_cod'),
+                'platform_id': self.platform_id.id,
+                'carrier_id' : self.env['delivery.carrier'].create({
+                    'name': l.get('logistic_name'),
+                    'product_id': self.env.ref('delivery.product_product_delivery').id
+                    }).id
+                })

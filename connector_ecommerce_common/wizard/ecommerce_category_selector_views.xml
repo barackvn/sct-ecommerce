@@ -7,7 +7,7 @@
             <field name="model">ecommerce.category.selector</field>
             <field name="arch" type="xml">
                 <form string="Select Category">
-                    <field name="platf_id" invisible="1"/>
+                    <field name="platform_id" invisible="1"/>
                     <group col="4">
                         <field name="tier1" nolabel="1" colspan="1"/>
                         <field name="tier2" nolabel="1" colspan="1" attrs="{'readonly':[('tier1','=',False)]}"/>
