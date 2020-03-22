@@ -19,6 +19,7 @@
                                 <field name="shop_id"/>
                                 <field name="auto_update_stock" widget="boolean_toggle"/>
                                 <button name="update_stock" type="object" string="Update Stock"/>
+                                <field name="_last_info_update"/>
                             </tree>
                         </field>
                     </group>

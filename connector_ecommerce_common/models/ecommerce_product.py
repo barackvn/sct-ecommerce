@@ -149,6 +149,7 @@ class eCommerceProductTemplate(models.Model):
     product_product_id = fields.Many2one('product.product', string=_("Single Variant"))
     ecomm_product_product_ids = fields.One2many('ecommerce.product.product', 'ecomm_product_tmpl_id', string=_("Variants"))
     auto_update_stock = fields.Boolean(default=True)
+    _last_info_update = fields.Datetime(string=_("Info Updated On"))
 
     model_object_field = fields.Many2one('ir.model.fields', string="Field",
                                          help="Select target field from the related document model.\n"

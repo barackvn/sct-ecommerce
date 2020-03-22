@@ -8,7 +8,8 @@
             <field name="arch" type="xml">
                 <form string="eCommerce Product">
                     <header>
-                        <button string="Update eCommerce Info" name="update_info" class="btn-info" type="object"/>
+                        <button name="preview" type="object" class="btn-info" string="Preview"/>
+                        <button string="Update eCommerce Info" name="update_info" class="btn-warning" type="object"/>
                     </header>
                     <sheet>
                         <group col="4">
@@ -33,7 +34,6 @@
                             </page>
                             <page string="Dynamic Generator" name="generator">
                                 <group col="2">
-                                    <button name="preview" type="object" class="btn-info" string="Preview"/>
                                     <field name="lang"/>
                                     <field name="model_object_field" domain="[('model','=','ecommerce.product.template')]"/>
                                     <field name="sub_object" readonly="1"/>

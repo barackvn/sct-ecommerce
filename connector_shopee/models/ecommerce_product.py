@@ -83,8 +83,10 @@ class ShopeeProductTemplate(models.Model):
             'name': self.name,
             'description': self.description,
             })
-        self.shop_id._py_client_shopee().item.update_item(data)
-
+        resp = self.shop_id._py_client_shopee().item.update_item(data)
+        console.log(resp)
+        if True:
+            self._last_info_update = fields.Datetime.now()
 
 
 

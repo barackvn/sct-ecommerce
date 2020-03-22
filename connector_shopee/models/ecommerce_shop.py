@@ -190,18 +190,29 @@ class eCommercerShop(models.Model):
         resp = resp or self._py_client_shopee().order.get_order_detail(ordersn_list=[ordersn])
         shopee_orders = resp.get('orders')
         shopee_order = shopee_orders[0]
+        address = shopee_order['recipient_address']
         partner_vals = {
-                'phone': shopee_order['recipient_address']['phone'],
-                'name': shopee_order['recipient_address']['name'],
+                'phone': address['phone'],
+                'name': address['name'],
                 'ref': shopee_order['buyer_username'],
                 }
-#        partner_id = self.env['res.partner'].search([('phone','=',partner_vals['phone'])])[:1] or self.env['res.partner'].create(partner_vals)
+        splits = address['full_address'].split(address['district'] or address['city'] or address['state'] or None)
+        shipping_address = {
+                'country_id': self.env['res.country'].search([('code','=',address['country'])]).id,
+                'zip': address['zipcode'],
+                'state_id': self.env['res.country.state'].search([('name','=',address['state'])]).id,
+                'city': address['city'],
+                'street2': address['district'],
+                'street': splits and splits[0].rstrip(', ')
+                }
+
+        partner_id = self.env['res.partner'].search([('phone','=',partner_vals['phone'])])[:1] or self.env['res.partner'].create(partner_vals)
 
         order = self.env['sale.order'].create({
                 'ecommerce_shop_id' : self.id,
                 'team_id': self.team_id and self.team_id.id,
                 'client_order_ref': ordersn,
-                'partner_id': self.env['res.partner'].search([('phone','=',partner_vals['phone'])])[:1].id or self.env['res.partner'].create(partner_vals).id,
+                'partner_id': partner_id.child_ids.filtered(lambda child: all(child[field] == val for field, val in shipping_address))[:1].id or self.env['res.partner'].create(shipping_address.update({'type': 'delivery'})).id,
                 'order_line':[(0, _, {
                     'product_id' : item['variation_id'] and self.env['ecommerce.product.product'].search([
                         ('platform_variant_idn','=',str(item['variation_id']))
@@ -214,7 +225,6 @@ class eCommercerShop(models.Model):
                     #'route_id': self.route_id.id,
                     }) for item in shopee_order['items']], 
                 })
-        order.message_post(body='Shipping Address: {}'.format(shopee_order['recipient_address']['full_address']))
         return order
 
 
