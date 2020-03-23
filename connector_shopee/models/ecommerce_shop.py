@@ -205,6 +205,12 @@ class eCommercerShop(models.Model):
                 'street2': address['district'],
                 'street': splits and splits[0].rstrip(', ')
                 }
+
+        partner_id = self.env['res.partner'].search([
+            ('type','!=','delivery'),
+            ('phone','=',partner_vals['phone'])
+            ])[:1] or self.env['res.partner'].create(partner_vals)
+
         shipping_ids = partner_id.child_ids.filtered(lambda child: all(child[field] == val for field, val in shipping_address.items()))
         if shipping_ids: 
             shipping_id = shipping_ids[0]
@@ -214,11 +220,6 @@ class eCommercerShop(models.Model):
                 'phone': address['phone'],
                 })
             shipping_id = self.env['res.partner'].create(shipping_address)
-
-        partner_id = self.env['res.partner'].search([
-            ('type','!=','delivery'),
-            ('phone','=',partner_vals['phone'])
-            ])[:1] or self.env['res.partner'].create(partner_vals)
 
         order = self.env['sale.order'].create({
                 'ecommerce_shop_id' : self.id,
