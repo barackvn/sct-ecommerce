@@ -205,14 +205,26 @@ class eCommercerShop(models.Model):
                 'street2': address['district'],
                 'street': splits and splits[0].rstrip(', ')
                 }
+        shipping_ids = partner_id.child_ids.filtered(lambda child: all(child[field] == val for field, val in shipping_address.items()))
+        if shipping_ids: 
+            shipping_id = shipping_ids[0]
+        else:
+            shipping_address.update({
+                'type': 'delivery',
+                'phone': address['phone'],
+                })
+            shipping_id = self.env['res.partner'].create(shipping_address)
 
-        partner_id = self.env['res.partner'].search([('phone','=',partner_vals['phone'])])[:1] or self.env['res.partner'].create(partner_vals)
+        partner_id = self.env['res.partner'].search([
+            ('type','!=','delivery'),
+            ('phone','=',partner_vals['phone'])
+            ])[:1] or self.env['res.partner'].create(partner_vals)
 
         order = self.env['sale.order'].create({
                 'ecommerce_shop_id' : self.id,
                 'team_id': self.team_id and self.team_id.id,
                 'client_order_ref': ordersn,
-                'partner_id': partner_id.child_ids.filtered(lambda child: all(child[field] == val for field, val in shipping_address))[:1].id or self.env['res.partner'].create(shipping_address.update({'type': 'delivery'})).id,
+                'partner_id': shipping_id.id,
                 'order_line':[(0, _, {
                     'product_id' : item['variation_id'] and self.env['ecommerce.product.product'].search([
                         ('platform_variant_idn','=',str(item['variation_id']))
