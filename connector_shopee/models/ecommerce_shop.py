@@ -217,6 +217,7 @@ class eCommercerShop(models.Model):
         else:
             shipping_address.update({
                 'type': 'delivery',
+                'parent_id': partner_id.id,
                 'phone': address['phone'],
                 })
             shipping_id = self.env['res.partner'].create(shipping_address)
