@@ -21,10 +21,18 @@ class eCommerceShop(models.Model):
         for k,v in kwargs.items():
             request.add_api_param(k,v)
         response = client.execute(request, access_token)
+        _logger.info(response.__dict__)
         return response.body
     
     def _get_info_lazada(self):
-        pass
+        self.ensure_one()
+        data = self._py_client_lazada_request('/seller/get','GET').get('data')
+        if data: self.write({
+            'shop_name': data.get('name'),
+            'shop_id': data.get('seller_id')
+            })
+
+        
 
     def _auth_lazada(self):
         params = {

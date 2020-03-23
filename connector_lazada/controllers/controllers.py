@@ -9,14 +9,15 @@ class ConnectorLazada(http.Controller):
         if kw.get('code'):
             shop= shop.sudo()
             resp = shop._py_client_lazada_request('/auth/token/create',code=kw.get('code'))
-            if resp['code'] = 'MissingParameter':
+            if resp['code'] == 'MissingParameter':
                 return 'Fail to authorize'
             elif resp['account_id']:
                 shop.write({
                     'access_token': resp.get('access_token'),
                     'refresh_token': resp.get('refresh_token'),
                     'refresh_expires_in': resp.get('refresh_expires_in'),
-                    'account': resp.get('account')
+                    'account': resp.get('account'),
+                    'state': 'auth',
                     })
         #shop.write({
         #    'ecomm_shop_idn': kw.get('shop_id'),
