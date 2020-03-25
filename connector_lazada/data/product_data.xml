@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<odoo>
+    <data>
+        <record model="product.product" id="lazada_product_product_default">
+            <field name="name">Lazada Default Product</field>
+            <field name="default_code">LAZADA</field>
+            <field name="type">consu</field>
+        </record>
+    </data>
+</odoo>
+
+

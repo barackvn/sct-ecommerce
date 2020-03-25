@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<odoo>
+    <data>
+        <record model="ir.ui.view" id="product_template_inherit_form_view_lazada">
+            <field name="name">product.template.inherit.form.lazada</field>
+            <field name="model">product.template</field>
+            <field name="inherit_id" ref="website_sale.product_template_form_view"/>
+            <field name="arch" type="xml">
+                <xpath expr="//group[@name='extra_images']" position="before">
+                    <group name="lazada" string="Lazada" col="4">
+                        <field name="lazada_product_sample_id"/>
+                        <label for="lazada_product_tmpl_ids" string="Synchronized Items" colspan="4"/>
+                        <field name="lazada_product_tmpl_ids" nolabel="1" widget="one2many_list" colspan="4" context="{'default_product_tmpl_id': active_id}">
+                            <tree create="1" string="Items">
+                                <field name="name"/>
+                                <field name="platform_item_idn"/>
+                                <field name="shop_id"/>
+                                <field name="auto_update_stock" widget="boolean_toggle"/>
+                                <button name="update_stock" type="object" string="Update Stock"/>
+                                <field name="_last_info_update"/>
+                            </tree>
+                        </field>
+                    </group>
+                </xpath>
+            </field>
+        </record>
+
+        <!-- record model="ir.ui.view" id="lazada_product_sample_form_view">
+            <field name="name">lazada.product.sample.form</field>
+            <field name="model">lazada.product.sample</field>
+            <field name="arch" type="xml">
+                <form string="Shopee Product">
+                    <group>
+                        -->
+    </data>
+</odoo>
+

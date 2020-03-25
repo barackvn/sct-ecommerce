@@ -2,9 +2,9 @@
   <data>
     <!-- explicit list view definition -->
     <!--
-    <record model="ir.ui.view" id="connector_lazada.list">
-      <field name="name">connector_lazada list</field>
-      <field name="model">connector_lazada.connector_lazada</field>
+    <record model="ir.ui.view" id="shopee_ecommerce_client.list">
+      <field name="name">shopee_ecommerce_client list</field>
+      <field name="model">shopee_ecommerce_client.shopee_ecommerce_client</field>
       <field name="arch" type="xml">
         <tree>
           <field name="name"/>
@@ -17,18 +17,18 @@
 
     <!-- actions opening views on models -->
     <!--
-    <record model="ir.actions.act_window" id="connector_lazada.action_window">
-      <field name="name">connector_lazada window</field>
-      <field name="res_model">connector_lazada.connector_lazada</field>
+    <record model="ir.actions.act_window" id="shopee_ecommerce_client.action_window">
+      <field name="name">shopee_ecommerce_client window</field>
+      <field name="res_model">shopee_ecommerce_client.shopee_ecommerce_client</field>
       <field name="view_mode">tree,form</field>
     </record>
     -->
 
     <!-- server action to the one above -->
     <!--
-    <record model="ir.actions.server" id="connector_lazada.action_server">
-      <field name="name">connector_lazada server</field>
-      <field name="model_id" ref="model_connector_lazada_connector_lazada"/>
+    <record model="ir.actions.server" id="shopee_ecommerce_client.action_server">
+      <field name="name">shopee_ecommerce_client server</field>
+      <field name="model_id" ref="model_shopee_ecommerce_client_shopee_ecommerce_client"/>
       <field name="state">code</field>
       <field name="code">
         action = {
@@ -42,19 +42,19 @@
 
     <!-- Top menu item -->
     <!--
-    <menuitem name="connector_lazada" id="connector_lazada.menu_root"/>
+    <menuitem name="shopee_ecommerce_client" id="shopee_ecommerce_client.menu_root"/>
     -->
     <!-- menu categories -->
     <!--
-    <menuitem name="Menu 1" id="connector_lazada.menu_1" parent="connector_lazada.menu_root"/>
-    <menuitem name="Menu 2" id="connector_lazada.menu_2" parent="connector_lazada.menu_root"/>
+    <menuitem name="Menu 1" id="shopee_ecommerce_client.menu_1" parent="shopee_ecommerce_client.menu_root"/>
+    <menuitem name="Menu 2" id="shopee_ecommerce_client.menu_2" parent="shopee_ecommerce_client.menu_root"/>
     -->
     <!-- actions -->
     <!--
-    <menuitem name="List" id="connector_lazada.menu_1_list" parent="connector_lazada.menu_1"
-              action="connector_lazada.action_window"/>
-    <menuitem name="Server to list" id="connector_lazada" parent="connector_lazada.menu_2"
-              action="connector_lazada.action_server"/>
+    <menuitem name="List" id="shopee_ecommerce_client.menu_1_list" parent="shopee_ecommerce_client.menu_1"
+              action="shopee_ecommerce_client.action_window"/>
+    <menuitem name="Server to list" id="shopee_ecommerce_client" parent="shopee_ecommerce_client.menu_2"
+              action="shopee_ecommerce_client.action_server"/>
     -->
   </data>
 </odoo>

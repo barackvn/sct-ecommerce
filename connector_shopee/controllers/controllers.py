@@ -38,8 +38,7 @@ class ShopeeController(eCommerceController):
         else:
             return http.Response(status=500)
     
-    @http.route('/connector_ecommerce/<model("ecommerce.shop"):shop>/auth', auth='public')
-    def auth_callback(self, shop, **kw):
+    def _auth_callback_shopee(self, shop, **kw):
         #fix security later
         shop = shop.sudo()
         shop.write({
@@ -48,8 +47,7 @@ class ShopeeController(eCommerceController):
         shop._get_info_shopee()
         return 'Successfully authorized!'
 
-    @http.route('/connector_ecommerce/<model("ecommerce.shop"):shop>/deauth', auth='public')
-    def deauth_callback(self, shop, **kw):
+    def _deauth_callback_shopee(self, shop, **kw):
         #fix security later
         shop = shop.sudo()
         shop.write({'state': 'deauth'})

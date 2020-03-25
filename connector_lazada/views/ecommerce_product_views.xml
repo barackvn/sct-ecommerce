@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<odoo>
+    <data>
+        <record model="ir.ui.view" id="lazada_product_sample_form_view">
+            <field name="name">lazada.product.sample.form</field>
+            <field name="model">lazada.product.sample</field>
+            <field name="arch" type="xml">
+                <form string="Lazada Product">
+                    <group string="Basic Infomation">
+                        <field name="product_tmpl_id" invisible="1"/>
+                        <field name="name"/>
+                        <field name="category_name"/>
+                        <field name="ecomm_categ_id"/>
+                        <field name="video"/>
+                        <field name="categ_attribute_ids" widget="one2many_list"/>
+                    </group>
+                    <group string="Detailed Description">
+                        <field name="short_description"/>
+                        <field name="package_content"/>
+                    </group>
+                    <group string="Price &amp; Stock">
+                    </group>
+                    <group string="Service &amp; Delivery">
+                        <group colspan="4">
+                            <field name="warranty_type"/>
+                            <field name="warranty"/>
+                            <field name="product_warranty"/>
+                        </group>
+                        <group col="4" colspan="4">
+                            <field name="package_weight" widget="char" colspan="2"/>
+                            <separator colspan="2"/>
+                            <label for="measures"  string="Package Dimensions (cm)" colspan="1"/>
+                            <div name="measures" colspan="3" col="3">
+                                <group col="3" colspan="3">
+                                    <field name="package_length" nolabel="1" colspan="1" placeholder="Length" widget="char"/>
+                                    <field name="package_width" nolabel="1" colspan="1" placeholder="Width" widget="char"/>
+                                    <field name="package_height" nolabel="1" colspan="1" placeholder="Height" widget="char"/>
+                                </group>
+                            </div>
+                        </group>
+                    </group>
+                </form>
+            </field>
+        </record>
+    </data>
+</odoo>
+

@@ -14,6 +14,7 @@ class eCommerceShop(models.Model):
     is_main = fields.Boolean(string=_("Main Shop on Platform"))
     ecomm_product_tmpl_ids = fields.One2many('ecommerce.product.template','shop_id')
     auto_update_stock = fields.Boolean()
+    _last_sku_sync = fields.Datetime()
 
     @api.multi
     def do_action(self, action):
@@ -27,6 +28,10 @@ class eCommerceShop(models.Model):
     def deauth(self):
         self.ensure_one()
         return getattr(self, "_deauth_{}".format(self.platform_id.platform))()
+
+    def sync_product_sku_match(self, **kw):
+        self.ensure_one()
+        return getattr(self, "_sync_product_sku_match_{}".format(self.platform_id.platform))(**kw)
 
 class SaleOrder(models.Model):
     _inherit = 'sale.order'

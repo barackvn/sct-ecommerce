@@ -1,17 +1,18 @@
 # -*- coding: utf-8 -*-
 from odoo import http
+from odoo.addons.connector_ecommerce_common.controllers.controllers import eCommerceController
+import hmac, hashlib, json
 
-class ConnectorLazada(http.Controller):
+class ConnectorLazada(eCommerceController):
 
-    @http.route('/connector_ecommerce/<model("ecommerce.shop"):shop>/auth', auth='public')
-    def auth_callback(self, shop, **kw):
+    def _auth_callback_lazada(self, shop, **kw):
         #fix security later
         if kw.get('code'):
             shop= shop.sudo()
             resp = shop._py_client_lazada_request('/auth/token/create',code=kw.get('code'))
-            if resp['code'] == 'MissingParameter':
-                return 'Fail to authorize'
-            elif resp['account_id']:
+            if resp['code'] in ['MissingParameter','InvalidCode']:
+                return 'Failed'
+            elif resp['access_token']:
                 shop.write({
                     'access_token': resp.get('access_token'),
                     'refresh_token': resp.get('refresh_token'),
@@ -23,7 +24,7 @@ class ConnectorLazada(http.Controller):
         #    'ecomm_shop_idn': kw.get('shop_id'),
         #    'state': 'auth'})
                 shop._get_info_lazada()
-                return 'Successfully authorized!'
+                return 'Successfully Authorized!'
 
 #     @http.route('/connector_lazada/connector_lazada/', auth='public')
 #     def index(self, **kw):

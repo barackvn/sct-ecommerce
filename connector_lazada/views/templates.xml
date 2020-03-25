@@ -1,5 +1,11 @@
 <odoo>
     <data>
+        <template id="assets_common" name="lazada datamoat scripts" inherit_id="web.assets_common">
+            <xpath expr="." position="inside">
+                <script type="text/javascript" src="//laz-g-cdn.alicdn.com/sj/securesdk/0.0.3/securesdk_lzd_v1.js" id="J_secure_sdk_v2" data-appkey="117721"></script>
+            </xpath>
+        </template>
+
         <!-- <template id="listing"> -->
         <!--   <ul> -->
         <!--     <li t-foreach="objects" t-as="object"> -->

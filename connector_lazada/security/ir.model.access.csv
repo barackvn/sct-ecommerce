@@ -1,2 +1,2 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_connector_lazada_connector_lazada,connector_lazada.connector_lazada,model_connector_lazada_connector_lazada,,1,0,0,0
+access_lazada_product_sample,lazada_product_sample,model_lazada_product_sample,,1,1,1,1

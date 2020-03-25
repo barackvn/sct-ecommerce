@@ -21,7 +21,7 @@
             <field name="arch" type="xml">
                 <form string="eCommerce Shop">
                     <header>
-                        <button name="auth" string="Authorized" type="object" class="btn-primary" states='no, deauth'/>
+                        <button name="auth" string="Authorized" type="object" class="btn-primary" states='no,deauth'/>
                         <button name="deauth" string="Deauthorized" type="object" class="btn-danger" states='auth'/>
                         <field name="state" widget="statusbar"/>
                     </header>
