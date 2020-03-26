@@ -92,7 +92,7 @@ class eCommerceShop(models.Model):
                         'product_tmpl_id': tmpl.id,
                         'ecomm_product_product_ids': [(0, _, {
                             'name': u['ShopSku'],
-                            'platform_variant_idn': str(u['SkuId']),
+                            'platform_variant_idn': u['ShopSku'],
                             'product_product_id': tmpl.product_variant_ids.filtered(lambda r: r.default_code == u.get('SellerSku'))[:1].id,
                         }) for u in product['skus']],
                     })
@@ -112,4 +112,80 @@ class eCommerceShop(models.Model):
             if data['total_products'] > offset+limit:
                 self._sync_product_sku_match_lazada(offset=offset+limit, limit=limit, update_after = update_after)
         self._last_sku_sync = fields.Datetime.now()
+
+    @api.model
+    def _sync_orders_lazada(self, offset=0, limit=100, update_after = False):
+        shops = self.env['ecommerce.shop'].search([('platform_id.platform','=','lazada')])
+        for shop in shops:
+            update_after = update_after or shop._last_order_sync.isoformat()
+            resp = shop._py_client_lazada_request('/orders/get','GET', offset=offset, limit=limit, update_after=update_after)
+            if not resp.get('data').get('count'):
+                continue
+            for lazada_order in resp.get('data').get('orders'):
+                order = self.env['sale.order'].search([
+                    ('ecommerce_shop_id','=',shop.id),
+                    ('client_order_ref','=',lazada_order['order_id'])
+                ])[:1] or shop._new_order_lazada(lazada_order)
+                statuses = lazada_order['statuses'].split(',')
+                shop._update_order_lazada(order,statuses)
+                shop._last_order_sync = datetime.strptime(lazada_order['updated_at'],'%Y-%m-%d %H:%M:%S %z')
+
+    def _create_order_lazada(self, order):
+        self.ensure_one()
+        resp = self._py_client_lazada_request('/order/items/get','GET', order_id = order['order_id'])
+        if resp['code'] != '0':
+            return self._create_order_lazada(order)
+        address = order['address_shipping']
+        partner_id = self.env['res.partner'].search([
+            ('type','!=','delivery'),
+            ('phone','=',address['phone'])
+        ])[:1] or self.env['res.partner'].create({
+            'name': '{} {}'.format(order['customer_first_name'], order['customer_last_name']),
+            'phone': address['phone'],
+            })
+        country_id = self.env['res.country'].search([('name','=',address['country'])])
+        state_id = self.env['res.country.state'].search([('name','=',address['address3']),('country_id','=',country_id.id)])
+        shipping_address = {
+            'country_id': country_id.id,
+            'zip': address['post_code'],
+            'state_id': state_id.id,
+            'city': address['address4'],
+            'street2': address['address5'],
+            'street': address['address1']
+            }
+        shipping_ids = partner_id.child_ids.filtered(lambda child: all(child.mapped(lambda c: c[field].id if isinstance(c[field],fields.Many2one) else c[field]).casefold() == val.casefold() for field, val in shipping_address.items())) 
+        if shipping_ids:
+            shipping_id = shipping_ids[0]
+        else:
+            shipping_address.update({
+                'type': 'delivery',
+                'parent_id': partner_id.id,
+                'phone': address['phone'],
+            })
+            shipping_id = self.env['res.partner'].create(shipping_address)
+        order = self.env['sale.order'].create({
+            'ecommerce_shop_id' : self.id,
+            'team_id': self.team_id and self.team_id.id,
+            'client_order_ref': order['order_id'],
+            'partner_id': shipping_id.id,
+            'order_line':[(0, _, {
+                'product_id' : item['shop_sku'] and self.env['ecommerce.product.product'].search([
+                    ('platform_variant_idn','=',item['shop_sku'])
+                ]).product_product_id.id or self.env.ref("connector_shopee.shopee_product_product_default").id,
+                'name': item['name'],
+                'price_unit': item['paid_price'],
+                'product_uom_qty': 1,
+                    #'route_id': self.route_id.id,
+                }) for item in resp['data']], 
+            })
+        return order
+
+    def _update_order_lazada(self, order, statuses):
+        for status in statuses:
+            if status == 'ready_to_ship':
+                if order.state == 'draft': order.action_confirm()
+            elif status == 'canceled':
+                order.action_cancel()
+            elif status == 'delivered':
+                if order.state == 'sale': order.action_done()
 

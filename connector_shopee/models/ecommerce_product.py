@@ -84,7 +84,6 @@ class ShopeeProductTemplate(models.Model):
             'description': self.description,
             })
         resp = self.shop_id._py_client_shopee().item.update_item(data)
-        console.log(resp)
         if True:
             self._last_info_update = fields.Datetime.now()
 
@@ -103,4 +102,4 @@ class ShopeeProductProduct(models.Model):
             'stock': int(v.product_product_id.virtual_available) if (v.product_product_id.product_tmpl_id.type == 'product' and v.product_product_id.product_tmpl_id.inventory_availability not in [False, 'never']) else 1000,
         } for v in limit]
         shop_id._py_client_shopee().item.update_variation_stock_batch(variations = variations)
-        if len(self) > 50: (self-limit).__update_variantion_stock_shopee()
+        if len(self) > 50: (self-limit)._update_variantion_stock_shopee()

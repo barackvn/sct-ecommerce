@@ -14,7 +14,8 @@ class eCommerceShop(models.Model):
     is_main = fields.Boolean(string=_("Main Shop on Platform"))
     ecomm_product_tmpl_ids = fields.One2many('ecommerce.product.template','shop_id')
     auto_update_stock = fields.Boolean()
-    _last_sku_sync = fields.Datetime()
+    _last_sku_sync = fields.Datetime(readonly=True)
+    _last_order_sync = fields.Datetime(readonly=True)
 
     @api.multi
     def do_action(self, action):

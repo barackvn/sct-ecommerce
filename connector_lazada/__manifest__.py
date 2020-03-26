@@ -29,6 +29,7 @@
         'views/ecommerce_product_views.xml',
         'views/templates.xml',
         'data/product_data.xml',
+        'data/cron.xml',
     ],
     # only loaded in demonstration mode
     'demo': [
