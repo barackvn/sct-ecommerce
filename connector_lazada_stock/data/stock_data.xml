@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<odoo>
+    <data>
+        <record id="stock_warehouse_lazada" model="stock.warehouse">
+            <field name="name">Lazada Warehouse</field>
+            <field name="code">LW</field>
+        </record>
+
+        <function model="ir.model.data" name="_update_xmlids">
+            <value model="base" eval="[{
+                'xml_id': 'connector_lazada_stock.stock_location_lazada_view',
+                'record': obj().env.ref('connector_lazada_stock.stock_warehouse_lazada').view_location_id,
+                'noupdate': True,
+            }, {
+                'xml_id': 'connector_lazada_stock.stock_location_lazada_stock',
+                'record': obj().env.ref('connector_lazada_stock.stock_warehouse_lazada').lot_stock_id,
+                'noupdate': True,
+            }, {
+                'xml_id': 'connector_lazada_stock.stock_picking_type_lazada_in',
+                'record': obj().env.ref('connector_lazada_stock.stock_warehouse_lazada').in_type_id,
+                'noupdate': True,
+            }, {
+                'xml_id': 'connector_lazada_stock.stock_picking_type_lazada_out',
+                'record': obj().env.ref('connector_lazada_stock.stock_warehouse_lazada').out_type_id,
+                'noupdate': True,
+            }]"/>
+        </function>
+
+        <record id="stock_location_lazada_transit" model='stock.location'>
+            <field name="name">Transit</field>
+            <field name="location_id" ref="stock_location_lazada_view"/>
+            <field name="usage">transit</field>
+            <field name="barcode">LW-SHIP</field>
+        </record>
+        <record id="stock_location_route_lazada_fbl" model='stock.location.route'>
+            <field name="name">Lazada Fulfillment Route</field>
+            <field name="company_id"></field>
+            <field name="sequence">10</field>
+            <field name="sale_selectable" eval="True"/>
+        </record>
+        <record id="stock_rule_lazada_fbl" model='stock.rule'>
+            <field name="name">Lazada → Customer</field>
+            <field name="action">pull</field>
+            <field name="picking_type_id" ref="connector_lazada_stock.stock_picking_type_lazada_out"/>
+            <field name="location_src_id" ref="connector_lazada_stock.stock_location_lazada_stock"/>
+            <field name="location_id" ref="stock.stock_location_customers"/>
+            <field name="procure_method">make_to_stock</field>
+            <field name="route_id" ref="stock_location_route_lazada_fbl"/>
+            <field name="sequence">20</field>
+        </record>
+        <record id="stock_location_route_lazada_transit" model='stock.location.route'>
+            <field name="name">Lazada Normal Route</field>
+            <field name="company_id"></field>
+            <field name="sequence">10</field>
+            <field name="sale_selectable" eval="True"/>
+        </record>
+        <record id="stock_rule_lazada_transit1" model='stock.rule'>
+            <field name="name">WH → Lazada</field>
+            <field name="action">pull</field>
+            <field name="picking_type_id" ref="stock.picking_type_out"/>
+            <field name="location_src_id" ref="stock.stock_location_stock"/>
+            <field name="location_id" ref="connector_lazada_stock.stock_location_lazada_transit"/>
+            <field name="procure_method">make_to_stock</field>
+            <field name="route_id" ref="stock_location_route_lazada_transit"/>
+            <field name="sequence">20</field>
+        </record>
+        
+        <record id="stock_rule_lazada_transit2" model='stock.rule'>
+            <field name="name">Lazada → Customer</field>
+            <field name="action">pull</field>
+            <field name="picking_type_id" ref="connector_lazada_stock.stock_picking_type_lazada_out"/>
+            <field name="location_src_id" ref="connector_lazada_stock.stock_location_lazada_transit"/>
+            <field name="location_id" ref="stock.stock_location_customers"/>
+            <field name="procure_method">make_to_order</field>
+            <field name="route_id" ref="stock_location_route_lazada_transit"/>
+            <field name="sequence">20</field>
+        </record>
+    </data>
+</odoo>

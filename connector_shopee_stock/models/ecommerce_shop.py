@@ -42,7 +42,7 @@ class eCommerceShop(models.Model):
                 self.env['stock.immediate.transfer'].create({'pick_ids': [(4, pick_id.id)]}).process()
 
         elif status == 'TO_RETURN': 
-            pick_ids = order.picking_ids.filtered(r.picking_type_id in [self.env.ref('connector_shopee_stock.stock_picking_type_shopee_out'), order.warehouse_id.out_type_id])
+            pick_ids = order.picking_ids.filtered(lambda r: r.picking_type_id in [self.env.ref('connector_shopee_stock.stock_picking_type_shopee_out'), order.warehouse_id.out_type_id])
             for pick_id in pick_ids: 
                 if pick_id.state not in ['done','cancel']: pick_id.action_cancel()
                 elif pick_id.state == 'done': 

@@ -266,7 +266,7 @@ class eCommerceProductTemplate(models.Model):
     @api.model
     def cron_update_stock(self):
         for shop in self.env['ecommerce.shop'].search([('auto_update_stock','=',True)]):
-            self.env['ecommerce.product.template'].search([('shop_id','=', shop.id),('auto_update_stock','=',True)]).update_stock()
+            self.env['ecommerce.product.template'].search([('shop_id','=', shop.id)]).update_stock()
 
 
 

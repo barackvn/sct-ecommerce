@@ -122,18 +122,19 @@ class eCommerceShop(models.Model):
             if not resp.get('data').get('count'):
                 continue
             for lazada_order in resp.get('data').get('orders'):
+                detail = shop._py_client_lazada_request('/order/items/get','GET', order_id = lazada_order['order_id'])
                 order = self.env['sale.order'].search([
                     ('ecommerce_shop_id','=',shop.id),
                     ('client_order_ref','=',lazada_order['order_id'])
-                ])[:1] or shop._new_order_lazada(lazada_order)
+                ])[:1] or shop._new_order_lazada(lazada_order, detail=detail)
                 statuses = lazada_order['statuses'].split(',')
-                shop._update_order_lazada(order,statuses)
+                shop._update_order_lazada(order,statuses=statuses, detail=detail)
                 shop._last_order_sync = datetime.strptime(lazada_order['updated_at'],'%Y-%m-%d %H:%M:%S %z')
 
-    def _create_order_lazada(self, order):
+    def _create_order_lazada(self, order, detail=False):
         self.ensure_one()
-        resp = self._py_client_lazada_request('/order/items/get','GET', order_id = order['order_id'])
-        if resp['code'] != '0':
+        detail = detail or self._py_client_lazada_request('/order/items/get','GET', order_id = order['order_id'])
+        if detail['code'] != '0':
             return self._create_order_lazada(order)
         address = order['address_shipping']
         partner_id = self.env['res.partner'].search([
@@ -163,7 +164,7 @@ class eCommerceShop(models.Model):
                 'phone': address['phone'],
             })
             shipping_id = self.env['res.partner'].create(shipping_address)
-        order = self.env['sale.order'].create({
+        sale_order = self.env['sale.order'].create({
             'ecommerce_shop_id' : self.id,
             'team_id': self.team_id and self.team_id.id,
             'client_order_ref': order['order_id'],
@@ -176,11 +177,11 @@ class eCommerceShop(models.Model):
                 'price_unit': item['paid_price'],
                 'product_uom_qty': 1,
                     #'route_id': self.route_id.id,
-                }) for item in resp['data']], 
+                }) for item in detail['data']], 
             })
-        return order
+        return sale_order
 
-    def _update_order_lazada(self, order, statuses):
+    def _update_order_lazada(self, order, statuses=[], detail=False):
         for status in statuses:
             if status == 'ready_to_ship':
                 if order.state == 'draft': order.action_confirm()
