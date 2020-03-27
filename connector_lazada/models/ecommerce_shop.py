@@ -1,7 +1,7 @@
 #-*- coding: utf-8 -*-
 
 from odoo import api, fields, models, _
-import requests, logging, lazop
+import requests, logging, lazop, pytz
 from datetime import datetime
 _logger = logging.getLogger(__name__)
 
@@ -114,11 +114,11 @@ class eCommerceShop(models.Model):
         self._last_sku_sync = fields.Datetime.now()
 
     @api.model
-    def _sync_orders_lazada(self, offset=0, limit=100, update_after = False):
+    def _sync_orders_lazada(self, offset=0, limit=100, update_after = False, **kw):
         shops = self.env['ecommerce.shop'].search([('platform_id.platform','=','lazada')])
         for shop in shops:
             update_after = update_after or shop._last_order_sync.isoformat()
-            resp = shop._py_client_lazada_request('/orders/get','GET', offset=offset, limit=limit, update_after=update_after)
+            resp = shop._py_client_lazada_request('/orders/get','GET', offset=offset, limit=limit, update_after=update_after, **kw)
             if not resp.get('data').get('count'):
                 continue
             for lazada_order in resp.get('data').get('orders'):
@@ -126,10 +126,10 @@ class eCommerceShop(models.Model):
                 order = self.env['sale.order'].search([
                     ('ecommerce_shop_id','=',shop.id),
                     ('client_order_ref','=',lazada_order['order_id'])
-                ])[:1] or shop._new_order_lazada(lazada_order, detail=detail)
-                statuses = lazada_order['statuses'].split(',')
+                ])[:1] or shop._create_order_lazada(lazada_order, detail=detail)
+                statuses = lazada_order['statuses']
                 shop._update_order_lazada(order,statuses=statuses, detail=detail)
-                shop._last_order_sync = datetime.strptime(lazada_order['updated_at'],'%Y-%m-%d %H:%M:%S %z')
+                shop._last_order_sync = datetime.strptime(lazada_order['updated_at'],'%Y-%m-%d %H:%M:%S %z').astimezone(pytz.utc).replace(tzinfo=None)
 
     def _create_order_lazada(self, order, detail=False):
         self.ensure_one()
@@ -154,7 +154,7 @@ class eCommerceShop(models.Model):
             'street2': address['address5'],
             'street': address['address1']
             }
-        shipping_ids = partner_id.child_ids.filtered(lambda child: all(child.mapped(lambda c: c[field].id if isinstance(c[field],fields.Many2one) else c[field]).casefold() == val.casefold() for field, val in shipping_address.items())) 
+        shipping_ids = partner_id.child_ids.filtered(lambda child: all(child[field].id == val if isinstance(child[field],models.Model) else child[field].casefold() == val.casefold() for field, val in shipping_address.items()))
         if shipping_ids:
             shipping_id = shipping_ids[0]
         else:
@@ -172,7 +172,7 @@ class eCommerceShop(models.Model):
             'order_line':[(0, _, {
                 'product_id' : item['shop_sku'] and self.env['ecommerce.product.product'].search([
                     ('platform_variant_idn','=',item['shop_sku'])
-                ]).product_product_id.id or self.env.ref("connector_shopee.shopee_product_product_default").id,
+                ]).product_product_id.id or self.env.ref("connector_lazada.lazada_product_product_default").id,
                 'name': item['name'],
                 'price_unit': item['paid_price'],
                 'product_uom_qty': 1,
@@ -188,5 +188,9 @@ class eCommerceShop(models.Model):
             elif status == 'canceled':
                 order.action_cancel()
             elif status == 'delivered':
-                if order.state == 'sale': order.action_done()
-
+                if order.state == 'draft':
+                    order.action_confirm()
+                    order.action_done()
+                elif order.state == 'sale': 
+                    order.action_done()
+        return order

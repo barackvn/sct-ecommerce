@@ -211,7 +211,8 @@ class eCommercerShop(models.Model):
             ('phone','=',partner_vals['phone'])
             ])[:1] or self.env['res.partner'].create(partner_vals)
 
-        shipping_ids = partner_id.child_ids.filtered(lambda child: all(child.mapped(lambda c: c[field].id if isinstance(c[field],fields.Many2one) else c[field]).casefold() == val.casefold() for field, val in shipping_address.items()))
+        shipping_ids = partner_id.child_ids.filtered(lambda child: all(child[field].id == val if isinstance(child[field],models.Model) else child[field].casefold() == val.casefold() for field, val in shipping_address.items()))
+
         if shipping_ids: 
             shipping_id = shipping_ids[0]
         else:

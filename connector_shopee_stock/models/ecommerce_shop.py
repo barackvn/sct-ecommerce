@@ -38,7 +38,7 @@ class eCommerceShop(models.Model):
             shopee_pick_ids = order.picking_ids.filtered(lambda r: r.state not in ['done', 'cancel'] and r.picking_type_id == self.env.ref('connector_shopee_stock.stock_picking_type_shopee_out'))
             for pick_id in shopee_pick_ids: 
                 for line in pick_id.move_line_ids: 
-                    if line not in ['done', 'cancel']: line.qty_done = line.product_uom_qty
+                    if line.state not in ['done', 'cancel']: line.qty_done = line.product_uom_qty
                 self.env['stock.immediate.transfer'].create({'pick_ids': [(4, pick_id.id)]}).process()
 
         elif status == 'TO_RETURN': 
@@ -54,7 +54,7 @@ class eCommerceShop(models.Model):
             pick_ids = order.picking_ids.filtered(lambda r: r.state not in ['done', 'cancel'] and r.picking_type_id in [self.env.ref('connector_shopee_stock.stock_picking_type_shopee_out'), self.env.ref('connector_shopee_stock.stock_picking_type_shopee_in')])
             for pick_id in pick_ids:
                 for line in pick_id.move_line_ids: 
-                    if line not in ['done', 'cancel']: line.qty_done = line.product_uom_qty
+                    if line.state not in ['done', 'cancel']: line.qty_done = line.product_uom_qty
                 self.env['stock.immediate.transfer'].create({'pick_ids': [(4, pick_id.id)]}).process()
         return order
 
