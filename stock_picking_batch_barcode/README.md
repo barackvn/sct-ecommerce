@@ -1,1 +1,0 @@
-../odoo-sct-addons/sct-ecommerce/README.md
