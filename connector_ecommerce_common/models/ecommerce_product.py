@@ -141,6 +141,9 @@ class eCommerceProductTemplate(models.Model):
 
     name = fields.Char()
     description = fields.Text()
+    t_name = fields.Char()
+    t_description = fields.Text()
+    sku = fields.Char()
     shop_id = fields.Many2one('ecommerce.shop', required=True)
     platform_id = fields.Many2one('ecommerce.platform', related="shop_id.platform_id", store=True)
     platform_item_idn = fields.Char(string=_("ID Number"),index=True, required=True)
@@ -150,6 +153,8 @@ class eCommerceProductTemplate(models.Model):
     ecomm_product_product_ids = fields.One2many('ecommerce.product.product', 'ecomm_product_tmpl_id', string=_("Variants"))
     auto_update_stock = fields.Boolean(default=True)
     _last_info_update = fields.Datetime(string=_("Info Updated On"))
+    _last_sync = fields.Datetime(strong=_("Last Sync"))
+    _sync_res = fields.Selection([('fail',_("Fail")),('success',_("Success"))], string=_("Sync Result"))
 
     model_object_field = fields.Many2one('ir.model.fields', string="Field",
                                          help="Select target field from the related document model.\n"
@@ -238,11 +243,10 @@ class eCommerceProductTemplate(models.Model):
     def generate_values(self, fields=None):
         self.ensure_one()
         if fields is None: 
-            fields = ['name','description']
+            fields = ['t_name','t_description']
         template = self.get_template()
-        _logger.info(template)
         
-        return {field: template._render_template(getattr(template, field)) for field in fields}
+        return {field[2:]: template._render_template(getattr(template, field)) for field in fields}
 
     def preview(self):
         self.ensure_one()
@@ -278,3 +282,4 @@ class eCommerceProductProduct(models.Model):
     platform_variant_idn = fields.Char(index=True, required=True)
     product_product_id = fields.Many2one('product.product')
     ecomm_product_tmpl_id = fields.Many2one('ecommerce.product.template', ondelete='cascade')
+    sku = fields.Char()

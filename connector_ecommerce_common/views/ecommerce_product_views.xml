@@ -47,5 +47,30 @@
                 </form>
             </field>
         </record>
+
+        <record model="ir.ui.view" id="ecommerce_product_template_common_tree">
+            <field name="name">ecommerce.product.template.common.tree</field>
+            <field name="model">ecommerce.product.template</field>
+            <field name="arch" type="xml">
+                <tree string="eCommerce Product">
+                    <field name="name"/>
+                    <field name="platform_item_idn"/>
+                    <field name="product_tmpl_id"/>
+                    <!--field name="sku_match"/-->
+                    <!--field name="_last_sync"/-->
+                    <!--field name="_last_sync_result"/-->
+                </tree>
+            </field>
+        </record>
+
+
+        <record model="ir.actions.act_window" id="ecomm_product_tmpl_tree">
+            <field name="name">Shop Products</field>
+            <field name="res_model">ecommerce.product.template</field>
+            <field name="view_mode">tree,form,pivot</field>
+            <field name="domain">[('shop_id', '=', active_id)]</field>
+            <field name="context">{'default_shop_id': active_id}</field>
+        </record>
+
     </data>
 </odoo>

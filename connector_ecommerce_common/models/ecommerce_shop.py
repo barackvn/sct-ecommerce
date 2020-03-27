@@ -13,9 +13,16 @@ class eCommerceShop(models.Model):
     platform_id = fields.Many2one('ecommerce.platform', required = True)
     is_main = fields.Boolean(string=_("Main Shop on Platform"))
     ecomm_product_tmpl_ids = fields.One2many('ecommerce.product.template','shop_id')
+    ecomm_product_tmpl_count = fields.Integer(compute='_compute_tmpl_count')
     auto_update_stock = fields.Boolean()
     _last_sku_sync = fields.Datetime(readonly=True)
     _last_order_sync = fields.Datetime(readonly=True)
+    _last_product_sync = fields.Datetime(readonly=True)
+
+    @api.depend('ecomm_product_tmpl_ids')
+    def _compute_tmpl_count(self):
+        for shop in self:
+            shop.ecomm_product_tmpl_count = len(shop.ecomm_product_tmpl_ids)
 
     @api.multi
     def do_action(self, action):

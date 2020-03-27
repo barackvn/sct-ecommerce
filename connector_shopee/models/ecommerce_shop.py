@@ -2,6 +2,7 @@
 
 from odoo import models, fields, api, _
 import requests, logging, pyshopee
+from datetime import datetime, timedelta
 
 _logger = logging.getLogger(__name__)
 
@@ -109,7 +110,54 @@ class eCommercerShop(models.Model):
                 item and item['item_sku'] not in tmpl.product_tmpl_id.product_variant_ids.mapped('default_code') and all((v["variation_sku"] not in  tmpl.product_tmpl_id.product_variant_ids.mapped('default_code') for v in item["variations"]))
                 )):  tmpl.unlink()
             
+    def _sync_product_shopee(self, **kw):
+        self.ensure_one()
+        model = self.env['ecommerce.product.template']
+        if not kw.get('update_time_from'): kw.update({'update_time_from':self._last_product_sync.timestamp() or datetime.now()-timedelta(days=15)})
+        resp = self._py_client_shopee().item.get_item_list(**kw)
+        for item in resp['items']:
+            details = self._py_client_shopee().item.get_item_detail(item_id=item.get('item_id',0)).get('item',{})
+            tmpl = model.search([
+                ('shop_id', '=', self.id),
+                ('platform_item_idn','=', str(item.get('item_id')))
+                ])
+            if tmpl:
+                tmpl.write({
+                    'name': details.get('name',False),
+                    'description': details.get('description',False),
+                    'platform_item_idn': str(item.get('item_id')),
+                    'sku': item.get('item_sku'),
+                    '_last_sync': datetime.now(),
+                    '_sync_res': 'success',
+                    'ecomm_product_product_ids': [(0, _, {
+                        'name': v.get('name'),
+                        'platform_variant_idn': str(v.get('variation_id')),
+                        'sku': v.('variation_sku'),
+                    }) for v in details.get("variations", [])],
+                })
+            else:
+                model.create({
+                    'name': details.get('name',False),
+                    'description': details.get('description',False),
+                    'shop_id': self.id,
+                    'platform_item_idn': str(item.get('item_id')),
+                    'sku': item.get('item_sku'),
+                    '_last_sync': datetime.now(),
+                    '_sync_res': 'success',
+                    'ecomm_product_product_ids': [(0, _, {
+                        'name': v.get('name'),
+                        'platform_variant_idn': str(v.get('variation_id')),
+                        'sku': v.('variation_sku'),
+                    }) for v in details.get("variations", [])],
+                })
+        if resp.get('more'):
+            self._sync_product_shopee(**kw)
+        else:
+            self._last_product_sync = datetime.now()
 
+            
+
+        for item in 
     def _sync_product_sku_match_shopee(self, offset=0, limit=100):
         self.ensure_one()
         platform_id = self.env['ecommerce.platform'].search([('platform', '=','shopee')])[:1].id
