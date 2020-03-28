@@ -15,7 +15,9 @@
                         <group col="4">
                                 <field name="shop_id" />
                                 <field name="platform_item_idn" />
+                                <field name="product_tmpl_id"/>
                                 <field name="product_product_id"/>
+                                <field name="sku"/>
                                 <field name="auto_update_stock" widget="boolean_toggle"/>
                         </group>
                         <group col="2">
@@ -28,6 +30,7 @@
                                     <tree create="0">
                                         <field name="name"/>
                                         <field name="platform_variant_idn"/>
+                                        <field name="sku"/>
                                         <field name="product_product_id"/>
                                     </tree>
                                 </field>
@@ -56,6 +59,7 @@
                     <field name="name"/>
                     <field name="platform_item_idn"/>
                     <field name="product_tmpl_id"/>
+                    <field name="sku"/>
                     <!--field name="sku_match"/-->
                     <!--field name="_last_sync"/-->
                     <!--field name="_last_sync_result"/-->

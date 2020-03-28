@@ -34,7 +34,7 @@ class eCommerceShop(models.Model):
         if status in ['READY_TO_SHIP','RETRY_SHIP']:
             order.need_tracking_no = True
             pick_ids = order.picking_ids.filtered(lambda r: r.state not in ['done', 'cancel'])
-            pick_ids.write({'carrier_id': pick_ids.filtered('carrier_id')[:1].carrier_id})
+            pick_ids.write({'carrier_id': pick_ids.filtered('carrier_id')[:1].carrier_id.id})
         elif status == 'TO_CONFIRM_RECEIVE':
             shopee_pick_ids = order.picking_ids.filtered(lambda r: r.state not in ['done', 'cancel'] and r.picking_type_id == self.env.ref('connector_shopee_stock.stock_picking_type_shopee_out'))
             for pick_id in shopee_pick_ids: 

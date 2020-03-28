@@ -87,8 +87,6 @@ class ShopeeProductTemplate(models.Model):
         if True:
             self._last_info_update = fields.Datetime.now()
 
-
-
 class ShopeeProductProduct(models.Model):
     _inherit = 'ecommerce.product.product'
 

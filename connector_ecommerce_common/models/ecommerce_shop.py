@@ -14,12 +14,12 @@ class eCommerceShop(models.Model):
     is_main = fields.Boolean(string=_("Main Shop on Platform"))
     ecomm_product_tmpl_ids = fields.One2many('ecommerce.product.template','shop_id')
     ecomm_product_tmpl_count = fields.Integer(compute='_compute_tmpl_count')
-    auto_update_stock = fields.Boolean()
+    auto_sync = fields.Boolean()
     _last_sku_sync = fields.Datetime(readonly=True)
     _last_order_sync = fields.Datetime(readonly=True)
     _last_product_sync = fields.Datetime(readonly=True)
 
-    @api.depend('ecomm_product_tmpl_ids')
+    @api.depends('ecomm_product_tmpl_ids')
     def _compute_tmpl_count(self):
         for shop in self:
             shop.ecomm_product_tmpl_count = len(shop.ecomm_product_tmpl_ids)
@@ -40,6 +40,18 @@ class eCommerceShop(models.Model):
     def sync_product_sku_match(self, **kw):
         self.ensure_one()
         return getattr(self, "_sync_product_sku_match_{}".format(self.platform_id.platform))(**kw)
+
+    def sync_product(self, **kw):
+        for shop in self:
+            getattr(self, "_sync_product_{}".format(shop.platform_id.platform))(**kw)
+    
+    def match_sku(self):
+        for shop in self:
+            shop.ecomm_product_tmpl_ids.match_sku()  
+
+    @api.model
+    def cron_sync_product(self):
+        self.env['ecommerce.shop'].search([('auto_sync','=',True)]).sync_product()
 
 class SaleOrder(models.Model):
     _inherit = 'sale.order'

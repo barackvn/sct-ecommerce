@@ -113,7 +113,10 @@ class eCommercerShop(models.Model):
     def _sync_product_shopee(self, **kw):
         self.ensure_one()
         model = self.env['ecommerce.product.template']
-        if not kw.get('update_time_from'): kw.update({'update_time_from':self._last_product_sync.timestamp() or datetime.now()-timedelta(days=15)})
+        if not kw.get('update_time_from'): kw['update_time_from'] =  self._last_product_sync and int(self._last_product_sync.timestamp()) or int((datetime.now()-timedelta(days=15)).timestamp())
+        if not kw.get('pagination_offset'): kw['pagination_offset'] = 0
+        if not kw.get('pagination_entries_per_page'): kw['pagination_entries_per_page'] = 100
+        if not kw.get('update_time_to'): kw['update_time_to'] = int(datetime.now().timestamp())
         resp = self._py_client_shopee().item.get_item_list(**kw)
         for item in resp['items']:
             details = self._py_client_shopee().item.get_item_detail(item_id=item.get('item_id',0)).get('item',{})
@@ -122,18 +125,27 @@ class eCommercerShop(models.Model):
                 ('platform_item_idn','=', str(item.get('item_id')))
                 ])
             if tmpl:
+                for v in details.get("variations", []):
+                    p = tmpl.ecomm_product_product_ids.filtered(lambda p: p.platform_variant_idn == str(v.get('variation_id')))
+                    if p:
+                        p.write({
+                            'name': v.get('name'),
+                            'sku': v.get('variation_sku')
+                        })
+                    else:
+                        tmpl.write({
+                            'ecomm_product_product_ids': [(0,_,{
+                                'name': v.get('name'),
+                                'platform_variant_idn': str(v.get('variation_id')),
+                                'sku': v.get('variation_sku'),
+                            })]
+                        })
                 tmpl.write({
                     'name': details.get('name',False),
                     'description': details.get('description',False),
                     'platform_item_idn': str(item.get('item_id')),
                     'sku': item.get('item_sku'),
                     '_last_sync': datetime.now(),
-                    '_sync_res': 'success',
-                    'ecomm_product_product_ids': [(0, _, {
-                        'name': v.get('name'),
-                        'platform_variant_idn': str(v.get('variation_id')),
-                        'sku': v.('variation_sku'),
-                    }) for v in details.get("variations", [])],
                 })
             else:
                 model.create({
@@ -143,21 +155,19 @@ class eCommercerShop(models.Model):
                     'platform_item_idn': str(item.get('item_id')),
                     'sku': item.get('item_sku'),
                     '_last_sync': datetime.now(),
-                    '_sync_res': 'success',
                     'ecomm_product_product_ids': [(0, _, {
                         'name': v.get('name'),
                         'platform_variant_idn': str(v.get('variation_id')),
-                        'sku': v.('variation_sku'),
+                        'sku': v.get('variation_sku'),
                     }) for v in details.get("variations", [])],
                 })
         if resp.get('more'):
+            kw['pagination_offset'] += kw['pagination_entries_per_page']
             self._sync_product_shopee(**kw)
         else:
             self._last_product_sync = datetime.now()
 
-            
 
-        for item in 
     def _sync_product_sku_match_shopee(self, offset=0, limit=100):
         self.ensure_one()
         platform_id = self.env['ecommerce.platform'].search([('platform', '=','shopee')])[:1].id
@@ -278,7 +288,8 @@ class eCommercerShop(models.Model):
                 'partner_id': shipping_id.id,
                 'order_line':[(0, _, {
                     'product_id' : item['variation_id'] and self.env['ecommerce.product.product'].search([
-                        ('platform_variant_idn','=',str(item['variation_id']))
+                        ('platform_variant_idn','=',str(item['variation_id'])),
+                        ('ecomm_product_tmpl_id.shop_id','=',self.id)
                     ]).product_product_id.id or self.env['ecommerce.product.template'].search([
                         ('platform_item_idn','=',str(item['item_id']))
                     ]).product_product_id.id or self.env.ref("connector_shopee.shopee_product_product_default").id,

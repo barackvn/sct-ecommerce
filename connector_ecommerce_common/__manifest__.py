@@ -26,8 +26,8 @@
     'data': [
         'security/ir.model.access.csv',
         'views/ecommerce_config_views.xml',
-        'views/ecommerce_shop_views.xml',
         'views/ecommerce_product_views.xml',
+        'views/ecommerce_shop_views.xml',
         'views/product_views.xml',
         'wizard/ecommerce_category_selector_views.xml',
         'wizard/ecommerce_product_preview_views.xml',

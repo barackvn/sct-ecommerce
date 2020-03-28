@@ -148,13 +148,13 @@ class eCommerceProductTemplate(models.Model):
     platform_id = fields.Many2one('ecommerce.platform', related="shop_id.platform_id", store=True)
     platform_item_idn = fields.Char(string=_("ID Number"),index=True, required=True)
     ecomm_product_sample_id = fields.Many2one('ecommerce.product.sample')
-    product_tmpl_id = fields.Many2one('product.template',required=True, ondelete='cascade')
+    product_tmpl_id = fields.Many2one('product.template')
     product_product_id = fields.Many2one('product.product', string=_("Single Variant"))
     ecomm_product_product_ids = fields.One2many('ecommerce.product.product', 'ecomm_product_tmpl_id', string=_("Variants"))
     auto_update_stock = fields.Boolean(default=True)
     _last_info_update = fields.Datetime(string=_("Info Updated On"))
     _last_sync = fields.Datetime(strong=_("Last Sync"))
-    _sync_res = fields.Selection([('fail',_("Fail")),('success',_("Success"))], string=_("Sync Result"))
+    #_sync_res = fields.Selection([('fail',_("Fail")),('success',_("Success"))], string=_("Sync Result"))
 
     model_object_field = fields.Many2one('ir.model.fields', string="Field",
                                          help="Select target field from the related document model.\n"
@@ -269,14 +269,59 @@ class eCommerceProductTemplate(models.Model):
 
     @api.model
     def cron_update_stock(self):
-        for shop in self.env['ecommerce.shop'].search([('auto_update_stock','=',True)]):
-            self.env['ecommerce.product.template'].search([('shop_id','=', shop.id)]).update_stock()
+        for shop in self.env['ecommerce.shop'].search([('auto_sync','=',True)]):
+            self.env['ecommerce.product.template'].search([('shop_id','=', shop.id),('auto_update_stock','=',True)]).update_stock()
 
+    def match_sku(self):
+        for item in self:
+            if item.ecomm_product_product_ids.filtered('sku'):
+                item.product_product_id = False
+                if item.product_tmpl_id:
+                    d = {}
+                    for v in item.ecomm_product_product_ids:
+                        if v.sku:
+                            d.update({v: self.env['product.product'].search([
+                                ('product_tmpl_id','=',item.product_tmpl_id.id),
+                                ('default_code','=',v.sku)])[:1].id
+                            })
+                    if all(d.values()):
+                        for v in d:
+                            v.write({'product_product_id': d[v]})
+                    else:
+                        item.write({
+                            'product_tmpl_id': False,
+                            'ecomm_product_product_ids': [(1, v.id, {'product_product_id': False}) for v in item.ecomm_product_product_ids]
+                        })
+                else:
+                    item.product_tmpl_id = self.env['product.template'].search([
+                        ('product_variant_ids.default_code','in',[v.sku]) for v in item.ecomm_product_product_ids if v.sku
+                    ])[:1]
+                    item.write({
+                        'ecomm_product_product_ids': [(1, v.id, {
+                            'product_product_id': self.env['product.product'].search([
+                                ('product_tmpl_id','=',item.product_tmpl_id.id),
+                                ('default_code','=',v.sku)
+                            ])[:1].id}) for v in item.ecomm_product_product_ids if v.sku]
+                        })
+            elif item.sku:
+                if not item.product_product_id or item.product_product_id.default_code != item.sku:
+                    p = self.env['product.product'].search([
+                        ('default_code','=',item.sku)])
+                    item.write({
+                        'product_product_id': p and p[0].id,
+                        'product_tmpl_id': p and p[0].product_tmpl_id.id
+                    })
+            else:
+                item.write({
+                    'product_tmpl_id': False,
+                    'product_product_id': False,
+                    'ecomm_product_product_ids': [(1, p.id, {'product_product_id': False}) for p in item.ecomm_product_product_ids]
+                })
 
 
 class eCommerceProductProduct(models.Model):
     _name = 'ecommerce.product.product'
-    _description = "Real Product, which might be called as a Variant in some platform"
+    _description = "Real Product (Variant)"
 
     name = fields.Char()
     platform_variant_idn = fields.Char(index=True, required=True)

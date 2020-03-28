@@ -26,23 +26,30 @@
                         <field name="state" widget="statusbar"/>
                     </header>
                     <field name="ecomm_product_tmpl_ids" invisible="1"/>
-                    <div class="oe_button_box" name="button_box">
-                        <button class="oe_stat_button" type="action" name="%(ecomm_product_tmpl_tree)d" icon="fa-list">
-                            <div class="o_stat_info">
-                                <field name="ecomm_product_tmpl_count" class="o_stat_value"/>
-                                <span class="o_stat_text">Shop Products</span>
-                            </div>
-                        </button>
-                    </div>
                     <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <button type="object" name="match_sku" icon="fa-arrows-h" class="oe_stat_button">
+                                <span class="o_stat_text">Match SKU</span>
+                            </button>
+                            <button type="object" name="sync_product" icon="fa-refresh" class="oe_stat_button">
+                                <span class="o_stat_text">Sync Products Now</span>
+                            </button>
+                            <button class="oe_stat_button" type="action" name="%(ecomm_product_tmpl_tree)d" icon="fa-list">
+                                <div class="o_stat_info">
+                                    <field name="ecomm_product_tmpl_count" class="o_stat_value"/>
+                                    <span class="o_stat_text">Product(s)</span>
+                                </div>
+                            </button>
+                        </div>
                         <group>
                             <field name="name"/>
                             <field name="ecomm_shop_name"/>
                             <field name="platform_id"/>
                             <field name="ecomm_shop_idn"/>
                             <field name="is_main"/>
-                            <field name="auto_update_stock" widget="boolean_toggle"/>
+                            <field name="auto_sync" widget="boolean_toggle"/>
                         </group>
+
                     </sheet>
                 </form>
             </field>
