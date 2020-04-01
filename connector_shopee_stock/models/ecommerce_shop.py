@@ -42,14 +42,21 @@ class eCommerceShop(models.Model):
                     if line.state not in ['done', 'cancel']: line.qty_done = line.product_uom_qty
                 self.env['stock.immediate.transfer'].create({'pick_ids': [(4, pick_id.id)]}).process()
 
-        elif status == 'TO_RETURN': 
+        elif status in ['TO_RETURN','CANCELLED'] : 
             pick_ids = order.picking_ids.filtered(lambda r: r.picking_type_id in [self.env.ref('connector_shopee_stock.stock_picking_type_shopee_out'), order.warehouse_id.out_type_id])
-            for pick_id in pick_ids: 
+            for pick_id in pick_ids:
                 if pick_id.state not in ['done','cancel']: pick_id.action_cancel()
                 elif pick_id.state == 'done': 
-                    wiz = self.env['stock.picking.return'].create({'picking_id': pick_id.id})
-                    wiz.product_return_moves.write({'to_refund': True})
-                    wiz.create_returns()
+                    returns = order.picking_ids.filtered(lambda r: r.location_id == pick_id.location_dest_id and r.location_dest_id == pick_id.location_id and r.state not in ['done','cancel'])
+                    if not returns:
+                        wiz_model = self.env['stock.return.picking']
+                        wiz = wiz_model.create(wiz_model.with_context(active_id = pick_id.id).default_get(wiz_model._fields.keys()))
+                        wiz.product_return_moves.write({'to_refund': True})
+                        new_picking_id, pick_type_id = wiz._create_returns()
+                        new_picking_id.write({
+                            'carrier_id': pick_id.carrier_id.id,
+                            'carrier_tracking_ref': pick_id.carrier_tracking_ref
+                            })
 
         elif status == 'COMPLETED':
             pick_ids = order.picking_ids.filtered(lambda r: r.state not in ['done', 'cancel'] and r.picking_type_id in [self.env.ref('connector_shopee_stock.stock_picking_type_shopee_out'), self.env.ref('connector_shopee_stock.stock_picking_type_shopee_in')])

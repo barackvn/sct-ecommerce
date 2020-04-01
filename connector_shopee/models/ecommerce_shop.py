@@ -140,11 +140,20 @@ class eCommercerShop(models.Model):
                                 'sku': v.get('variation_sku'),
                             })]
                         })
+                l_id = len(tmpl.ecomm_product_image_ids)
+                l_i = len(details.get("images",[]))
                 tmpl.write({
                     'name': details.get('name',False),
                     'description': details.get('description',False),
                     'platform_item_idn': str(item.get('item_id')),
                     'sku': item.get('item_sku'),
+                    'ecomm_product_image_ids': [(1, tmpl.ecomm_product_image_ids[i].id, {
+                        'sequence': i, 
+                        'image_url': i < l_i and details['images'][i] or False
+                    }) if i < l_id else (0, _, {
+                        'sequence': i,
+                        'image_url': details['images'][i]
+                    }) for i in range(max(l_id,l_i))],
                     '_last_sync': datetime.now(),
                 })
             else:
@@ -155,6 +164,10 @@ class eCommercerShop(models.Model):
                     'platform_item_idn': str(item.get('item_id')),
                     'sku': item.get('item_sku'),
                     '_last_sync': datetime.now(),
+                    'ecomm_product_image_ids': [(0, _, {
+                        'sequence': i,
+                        'image_url': url
+                    }) for i, url in enumerate(details.get("images",[]))],
                     'ecomm_product_product_ids': [(0, _, {
                         'name': v.get('name'),
                         'platform_variant_idn': str(v.get('variation_id')),
@@ -305,43 +318,10 @@ class eCommercerShop(models.Model):
     def _update_order_shopee(self, ordersn, status, update_time):
         order = self.env['sale.order'].search([('ecommerce_shop_id','=',self.id),('client_order_ref','=',ordersn)])[:1] or self._new_order_shopee(ordersn, status, update_time)
         if status in ['READY_TO_SHIP','SHIPPED']:
-            if order.state == 'draft': order.action_confirm()
+            if order.state in ['draft','sent']: order.action_confirm()
         elif status == 'CANCELLED':
-            order.action_cancel()
+            if order.state in ['draft','sent']: order.action_cancel()
         elif status == 'COMPLETED':
             if order.state == 'sale': order.action_done()
         return order
 
-        #elif status == 'TO_RETURN':
-        #    shopee_pick_ids = order.picking_ids.filtered(lambda r: r.state not in ['done', 'cancel'] and r.picking_type_id.code == 'outgoing' and r.location_id.id == self.location_id.id)
-        #    for pick_id in shopee_pick_ids: pick_id.action_cancel()
-        #    my_pick_ids = order.picking_ids.filtered(lambda r: r.state == 'done' and r.picking_type_id.code == 'internal' and r.location_dest_id.id == self.location_id.id)
-        #    for pick_id in my_pick_ids: 
-        #        wiz = self.env['stock.picking.return'].create({'picking_id': pick_id.id}).create_returns()
-        #elif status == 'COMPLETED':
-        #    if order.state == 'sale': order.action_done()
-        #    pick_ids = order.picking_ids.filtered(lambda r: r.state not in ['done', 'cancel'] and r.picking_type_id.code == 'outgoing' and r.location_id.id == self.location_id.id)
-        #    for pick_id in pick_ids:
-        #        wiz = self.env['stock.immediate.transfer'].create({'pick_ids': [(4, pick_id.id)]}).process()
-
-
-
-#class shopee_state_map(models.Model):
-#    _name = 'shopee_api_client.shopee_state_map'
-#
-#    shopee_state = fields.Selection([
-#        ('UNPAID','UNPAID'),
-#        ('READY_TO_SHIP','READY_TO_SHIP'),
-#        ('RETRY_SHIP','RETRY_SHIP'),
-#        ('IN_CANCEL','IN_CANCEL'),
-#        ('SHIPPED','SHIPPED'),
-#        (''])
-
-#     name = fields.Char()
-#     value = fields.Integer()
-#     value2 = fields.Float(compute="_value_pc", store=True)
-#     description = fields.Text()
-#
-#     @api.depends('value')
-#     def _value_pc(self):
-#         self.value2 = float(self.value) / 100

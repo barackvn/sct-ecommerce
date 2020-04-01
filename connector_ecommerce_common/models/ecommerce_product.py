@@ -151,7 +151,8 @@ class eCommerceProductTemplate(models.Model):
     product_tmpl_id = fields.Many2one('product.template')
     product_product_id = fields.Many2one('product.product', string=_("Single Variant"))
     ecomm_product_product_ids = fields.One2many('ecommerce.product.product', 'ecomm_product_tmpl_id', string=_("Variants"))
-    auto_update_stock = fields.Boolean(default=True)
+    ecomm_product_image_ids = fields.One2many('ecommerce.product.image', 'ecomm_product_tmpl_id', string=_("Images"))
+    auto_update_stock = fields.Boolean()
     _last_info_update = fields.Datetime(string=_("Info Updated On"))
     _last_sync = fields.Datetime(strong=_("Last Sync"))
     #_sync_res = fields.Selection([('fail',_("Fail")),('success',_("Success"))], string=_("Sync Result"))
@@ -328,3 +329,14 @@ class eCommerceProductProduct(models.Model):
     product_product_id = fields.Many2one('product.product')
     ecomm_product_tmpl_id = fields.Many2one('ecommerce.product.template', ondelete='cascade')
     sku = fields.Char()
+
+
+class eCommerceProductImage(models.Model):
+    _name = 'ecommerce.product.image'
+    _description = 'eCommerce Product Image'
+    _order = 'sequence'
+
+    sequence = fields.Integer()
+    name = fields.Char('Name')
+    image_url = fields.Char('Image Url')
+    ecomm_product_tmpl_id = fields.Many2one('ecommerce.product.template','Related Product')

@@ -71,7 +71,7 @@ class ShopeeProductTemplate(models.Model):
         limit = self[:50]
         items = [{
             'item_id': int(t.platform_item_idn),
-            'stock': int(t.product_product_id.virtual_available) if (t.product_tmpl_id.type == 'product' and t.product_tmpl_id.inventory_availability not in [False, 'never']) else 1000,
+            'stock': int(t.product_product_id.virtual_available > 0 and t.product_product_id.virtual_available or 0) if (t.product_tmpl_id.type == 'product' or (t.product_product_id.pack_ok == True and 'product' in t.product_product_id.mapped('pack_line_ids.product_id.type')) and t.product_tmpl_id.inventory_availability not in [False, 'never']) else 1000,
         } for t in limit]
         shop_id._py_client_shopee().item.update_stock_batch(items = items)
         if len(self) > 50: (self-limit)._update_item_stock_shopee()
@@ -82,7 +82,13 @@ class ShopeeProductTemplate(models.Model):
             'item_id':  int(self.platform_item_idn),
             'name': self.name,
             'description': self.description,
-            })
+            'sku': self.sku or ' ',
+            'variations': [{
+                'variation_id': int(v.platform_variant_idn),
+                'name': v.name,
+                'variation_sku': v.sku or ' ' 
+            } for v in self.ecomm_product_product_ids]
+        })
         resp = self.shop_id._py_client_shopee().item.update_item(data)
         if True:
             self._last_info_update = fields.Datetime.now()
@@ -90,14 +96,14 @@ class ShopeeProductTemplate(models.Model):
 class ShopeeProductProduct(models.Model):
     _inherit = 'ecommerce.product.product'
 
-    def _update_variantion_stock_shopee(self):
+    def _update_variation_stock_shopee(self):
         shop_id = self.mapped('ecomm_product_tmpl_id.shop_id')
         shop_id.ensure_one()
         limit = self[:50]
         variations = [{
             'item_id': int(v.ecomm_product_tmpl_id.platform_item_idn),
             'variation_id': int(v.platform_variant_idn),
-            'stock': int(v.product_product_id.virtual_available) if (v.product_product_id.product_tmpl_id.type == 'product' and v.product_product_id.product_tmpl_id.inventory_availability not in [False, 'never']) else 1000,
+            'stock': int(v.product_product_id.virtual_available > 0 and v.product_product_id.virtual_available or 0) if (v.product_product_id.product_tmpl_id.type == 'product' or (v.product_product_id.pack_ok == True and 'product' in v.product_product_id.mapped('pack_line_ids.product_id.type')) and v.product_product_id.product_tmpl_id.inventory_availability not in [False, 'never']) else 1000,
         } for v in limit]
         shop_id._py_client_shopee().item.update_variation_stock_batch(variations = variations)
         if len(self) > 50: (self-limit)._update_variantion_stock_shopee()

@@ -108,7 +108,7 @@
             <field name="view_mode">tree,form</field>
         </record>
 
-        <menuitem id="ecommerce_base_menu_root" name="eCommerce API" groups="base.group_erp_manager" sequence="10"/>
+        <menuitem id="ecommerce_base_menu_root" name="eCommerce API" groups="sales_team.group_sale_manager" sequence="10"/>
         <menuitem id="ecommerce_base_menu_config" name="Configurations" sequence="99" parent="ecommerce_base_menu_root"/>
         <menuitem action="ecommerce_platform_view_action" id="ecommerce_platform_menu" parent="ecommerce_base_menu_config" name="Platform" sequence="1"/>
         <menuitem action="ecommerce_category_view_action" id="ecommerce_category_menu" parent="ecommerce_base_menu_config" name="Category" sequence="2"/>

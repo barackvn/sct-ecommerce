@@ -2,7 +2,7 @@
 
 from odoo import api, fields, models, _
 import requests, logging, lazop, pytz
-from datetime import datetime
+from datetime import datetime, timedelta
 _logger = logging.getLogger(__name__)
 
 class eCommerceShop(models.Model):
@@ -53,6 +53,12 @@ class eCommerceShop(models.Model):
     def _deauth_lazada(self):
         pass
 
+    def _refresh_lazada(self):
+        self.ensure_one()
+        self.access_token = False
+        resp = self._py_client_lazada_request('/auth/token/refresh', refresh_token=self.refresh_token)
+        self.access_token = resp['access_token']
+
     def _get_categories_lazada(self):
         self.ensure_one()
         categs = self._py_client_lazada_request('/category/tree/get','GET').get('data')
@@ -69,6 +75,72 @@ class eCommerceShop(models.Model):
                     _create_categ(child, categ_id, categ['category_id'])
         for categ in categs:
             _create_categ(categ, False, 0)
+
+    def _sync_product_lazada(self, **kw):
+        self.ensure_one()
+        model = self.env['ecommerce.product.template']
+        if not kw.get('update_after'): kw['update_after'] =  self._last_product_sync and self._last_product_sync.isoformat() or (datetime.now()-timedelta(days=15)).replace(microsecond=0).isoformat()
+        if not kw.get('offset'): kw['offset'] = 0
+        if not kw.get('limit'): kw['limit'] = 100
+        if not kw.get('update_before'): kw['update_before'] = datetime.now().replace(microsecond=0).isoformat()
+        _logger.info(kw)
+        data = self._py_client_lazada_request('/products/get','GET', filter='all', **kw).get('data',{})
+        for product in data.get('products'):
+            tmpl = model.search([
+                ('shop_id', '=', self.id),
+                ('platform_item_idn', '=', str(product.get('item_id')))
+            ])
+            if tmpl:
+                for u in product['skus']:
+                    p = tmpl.ecomm_product_product_ids.filtered(lambda p: p.platform_variant_idn == u.get('ShopSku'))
+                    if p:
+                        p.write({
+                            'name': u.get('ShopSku'),
+                            'sku': u.get('SellerSku')
+                        })
+                    else:
+                        tmpl.write({
+                            'ecomm_product_product_ids': [(0,_,{
+                                'name': u.get('ShopSku'),
+                                'platform_variant_idn': u.get('ShopSku'),
+                                'sku': u.get('SellerSku'),
+                            })]
+                        })
+                l_id = len(tmpl.ecomm_product_image_ids)
+                l_i = product['skus'] and len(product['skus'][0]['Images']) or 0
+                tmpl.write({
+                    'name': product['attributes']['name'],
+                    'description': product['attributes']['short_description'],
+                    'platform_item_idn': str(product['item_id']),
+                    'ecomm_product_image_ids': [(1, tmpl.ecomm_product_image_ids[i].id, {
+                        'sequence': i,
+                        'image_url': i < l_i and product['skus'][0]['Images'][i] or False
+                    }) if i < l_id else (0, _, {
+                        'sequence': i,
+                        'image_url': product['skus'][0]['Images'][i]
+                    }) for i in range(max(l_id,l_i))],
+                    '_last_sync': datetime.now(),
+                })
+            else:
+                model.create({
+                    'name': product['attributes']['name'],
+                    'description': product['attributes']['short_description'],
+                    'shop_id': self.id,
+                    'platform_item_idn': str(product['item_id']),
+                    '_last_sync': datetime.now(),
+                    'ecomm_product_product_ids': [(0, _, {
+                        'name': u['ShopSku'],
+                        'platform_variant_idn': u['ShopSku'],
+                        'sku': u['SellerSku']
+                    }) for u in product['skus']],
+                })
+        if data['total_products'] > kw['offset']+kw['limit']:
+            kw['offset']+=kw['limit']
+            self._sync_product_lazada(**kw)
+        else:
+            self._last_sku_sync = datetime.now()
+
+
 
     def _sync_product_sku_match_lazada(self, offset=0, limit=100, update_after = False):
         self.ensure_one()

@@ -20,12 +20,12 @@
     'version': '0.1',
 
     # any module necessary for this one to work correctly
-    'depends': ['base'],
+    'depends': ['website_sale_stock', 'stock_product_pack','connector_ecommerce_common'],
 
     # always loaded
     'data': [
         # 'security/ir.model.access.csv',
-        'views/views.xml',
+        'views/product_views.xml',
         'views/templates.xml',
     ],
     # only loaded in demonstration mode

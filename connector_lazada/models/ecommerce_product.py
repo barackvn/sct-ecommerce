@@ -49,7 +49,7 @@ class LazadaProductTemplate(models.Model):
                 'short_description': self.description,
             },
             'Skus': [{
-                    'SellerSku': v.product_product_id.default_code
+                    'SellerSku': v.sku,
             } for v in self.ecomm_product_product_ids]
         })
         resp = self.shop_id._py_client_lazada_request('/product/update',payload=to_xml_str('Request',{'Product': data}))

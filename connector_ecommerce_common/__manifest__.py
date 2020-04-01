@@ -20,7 +20,7 @@
     'version': '0.1',
 
     # any module necessary for this one to work correctly
-    'depends': ['website_sale','delivery'],
+    'depends': ['website_sale','sale_product_pack','delivery'],
 
     # always loaded
     'data': [
