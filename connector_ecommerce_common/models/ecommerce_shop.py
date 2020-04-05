@@ -15,6 +15,7 @@ class eCommerceShop(models.Model):
     ecomm_product_tmpl_ids = fields.One2many('ecommerce.product.template','shop_id')
     ecomm_product_tmpl_count = fields.Integer(compute='_compute_tmpl_count')
     auto_sync = fields.Boolean()
+    carrier_ids = fields.One2many('ecommerce.shop.carrier', 'shop_id', auto_join=True, string=_('Delivery Methods'))
     _last_sku_sync = fields.Datetime(readonly=True)
     _last_order_sync = fields.Datetime(readonly=True)
     _last_product_sync = fields.Datetime(readonly=True)
@@ -43,7 +44,7 @@ class eCommerceShop(models.Model):
 
     def sync_product(self, **kw):
         for shop in self:
-            getattr(self, "_sync_product_{}".format(shop.platform_id.platform))(**kw)
+            getattr(shop, "_sync_product_{}".format(shop.platform_id.platform))(**kw)
     
     def match_sku(self):
         for shop in self:

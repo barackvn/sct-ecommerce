@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<odoo> 
+    <data>
+        <record model="ir.ui.view" id="ecomm_category_selector_create_form_view">
+            <field name="name">ecomm.category.selector.create.form</field>
+            <field name="model">ecommerce.category.selector</field>
+            <field name="priority">10</field>
+            <field name="type">form</field>
+            <field name="arch" type="xml">
+                <form string="Select Category">
+                    <field name="platform_id" invisible="1"/>
+                    <group col="4">
+                        <field name="tier1" nolabel="1" colspan="1" options="{'create_edit': false, 'search_more': false}"/>
+                        <field name="tier2" nolabel="1" colspan="1" options="{'create_edit': false, 'search_more': false}" attrs="{'readonly':[('tier1','=',False)]}"/>
+                        <field name="tier3" nolabel="1" colspan="1" options="{'create_edit': false, 'search_more': false}" attrs="{'readonly':[('tier2','=',False)]}"/>
+                        <field name="tier4" nolabel="1" colspan="1" options="{'create_edit': false, 'search_more': false}" attrs="{'readonly':[('tier3','=',False)]}"/>
+                    </group>
+                    <group>
+                        <field name="ecomm_categ_id" options="{'create_edit': false}"/>
+                        <field name="category_name"/>
+                    </group>
+                    <footer>
+                        <button name="action_create_sample" type="object" string="Next" class="btn btn-primary" context="{'ecomm_categ_id': ecomm_categ_id}"/>
+                        <button special="cancel" string="Cancel" class="btn btn-default"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <record model="ir.ui.view" id="ecomm_category_selector_edit_form_view">
+            <field name="name">ecomm.category.selector.edit.form</field>
+            <field name="model">ecommerce.category.selector</field>
+            <field name="priority">1</field>
+            <field name="type">form</field>
+            <field name="arch" type="xml">
+                <form string="Select Category">
+                    <field name="platform_id" invisible="1"/>
+                    <group col="4">
+                        <field name="tier1" nolabel="1" colspan="1" options="{'create_edit': false, 'search_more': false}"/>
+                        <field name="tier2" nolabel="1" colspan="1" options="{'create_edit': false, 'search_more': false}" attrs="{'readonly':[('tier1','=',False)]}"/>
+                        <field name="tier3" nolabel="1" colspan="1" options="{'create_edit': false, 'search_more': false}" attrs="{'readonly':[('tier2','=',False)]}"/>
+                        <field name="tier4" nolabel="1" colspan="1" options="{'create_edit': false, 'search_more': false}" attrs="{'readonly':[('tier3','=',False)]}"/>
+                    </group>
+                    <group>
+                        <field name="ecomm_categ_id" options="{'create_edit': false}"/>
+                        <field name="category_name"/>
+                    </group>
+                </form>
+            </field>
+        </record>
+
+        <record model="ir.actions.act_window" id="ecomm_category_selector_view_action">
+            <field name="name">Select Category</field>
+            <field name="res_model">ecommerce.category.selector</field>
+            <field name="src_model">product.template</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="target">new</field>
+            <field name="view_mode">form</field>
+            <field name="view_id" ref="ecomm_category_selector_create_form_view" />
+        </record>
+    </data>
+</odoo>
+
+                    

@@ -13,9 +13,12 @@
                     </header>
                     <sheet>
                         <group col="4">
-                                <field name="shop_id" />
-                                <field name="platform_item_idn" />
-                                <field name="product_tmpl_id"/>
+                            <field name="shop_id" domain="[('platform_id.platform','=?',context.get('platform'))]"/>
+                            <field name="platform_id" invisible="1"/>
+                                <field name="platform_item_idn" readonly="1"/>
+                                <field name="product_tmpl_id" attrs="{'readonly': [('product_product_id','!=',False)]}"/>
+                                <field name="has_sample"/>
+                                <button name="%(connector_ecommerce_common.ecomm_category_selector_view_action)d" string="Create Preset Info" type="action" context="{'default_platform_id': platform_id, 'default_product_tmpl_id': product_tmpl_id}" attrs="{'invisible': [('has_sample','=', True)]}"/>
                                 <field name="product_product_id"/>
                                 <field name="sku"/>
                                 <field name="auto_update_stock" widget="boolean_toggle"/>
@@ -51,7 +54,7 @@
                         <notebook>
                             <page string="Variants" name="variant">
                                 <field name="ecomm_product_product_ids" nolabel="1">
-                                    <tree create="0">
+                                    <tree>
                                         <field name="name"/>
                                         <field name="platform_variant_idn"/>
                                         <field name="sku"/>
@@ -96,10 +99,23 @@
             <field name="model">ecommerce.product.image</field>
             <field name="arch" type="xml">
                 <form string="eCommerce Product Images">
-                    <group>
-                        <field name="name"/>
-                        <field name="image_url"/>
-                    </group>
+                    <div class="row o_website_sale_image_modal">
+                        <div class="col-md-6 col-xl-5">
+                            <div class="oe_title">
+                                <label class="small text-muted" for="name" string="Image Name"/>
+                                <h2><field name="name" placeholder="Image Name"/></h2>
+                                <label class="small text-muted" for="image_url" string="Image Url"/>
+                                <field name="image_url"/>
+                                <button name="refresh" type="object" string="Refresh" class="btn-info"/>
+                                <field name="res_id" invisible="1"/>
+                                <field name="res_model" invisible="1"/>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-xl-7 text-center o_website_sale_image_modal_container">
+                            <field name="image_url_view" widget="image_url" width="400" attrs="{'invisible': [('image_url','in',[False, ''])]}"/>
+                            <field name="image" widget="image" attrs="{'invisible': [('image_url','not in',[False, ''])]}"/>
+                        </div>
+                    </div>
                 </form>
             </field>
         </record>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <data>
+        <record model="ir.ui.view" id="ecommerce_shop_stock_form_view">
+            <field name="name">ecommerce.shop.stock.form</field>
+            <field name="model">ecommerce.shop</field>
+            <field name="inherit_id" ref="connector_ecommerce_common.ecommerce_shop_form_view"/>
+            <field name="arch" type="xml">
+                <xpath expr="//notebook" position="inside">
+                    <page string="Logistics" name="logistic">
+                        <button name="get_logistic" string="Get Logistic" type="object" attrs="{'invisible': [('carrier_ids','!=',[])]}"/>
+                        <field name="carrier_ids" nolabel="1" mode="tree">
+                            <tree create="0" delete="0">
+                                <field name="ecomm_carrier_id"/>
+                                <field name="enable" widget="boolean_toggle"/>
+                            </tree>
+                        </field>
+                    </page>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

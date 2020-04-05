@@ -114,14 +114,22 @@ except ImportError:
 class eCommerceProductSample(models.AbstractModel):
     _name = 'ecommerce.product.sample'
 
+    ecomm_categ_selector_id= fields.Many2one('ecommerce.category.selector')
     name = fields.Char()
-    ecomm_categ_id = fields.Many2one('ecommerce.category', required=True)
+    ecomm_categ_id = fields.Many2one('ecommerce.category', related='ecomm_categ_selector_id.ecomm_categ_id', store=True)
     platform_id = fields.Many2one('ecommerce.platform', required=True)
     product_tmpl_ids = fields.One2many('product.template', 'ecomm_product_sample_id', readonly=True)
-    product_tmpl_id = fields.Many2one('product.template', ondelete='cascade', compute='_compute_product_tmpl_id', inverse='_inverse_product_tmpl_id', store=True)
-    category_id = fields.Integer(related='ecomm_categ_id.platform_categ_idn', store=True, readonly=True)
-    category_name = fields.Char(string=_("Shopee Category"), related='ecomm_categ_id.complete_name', readonly=True)
-    
+    product_tmpl_id = fields.Many2one('product.template', ondelete='cascade', store=True,
+            compute='_compute_product_tmpl_id', inverse='_inverse_product_tmpl_id')
+    ecomm_attribute_lines = fields.One2many('ecommerce.product.sample.attribute.line', 'res_id', 'Category Attributes', 
+            auto_join=True, domain = lambda self: [('res_model','=', self._name)])
+    ecomm_product_image_ids = fields.One2many('ecommerce.product.image', 'res_id', 'Images', 
+            auto_join=True, domain = lambda self: [('res_model','=',self._name)])
+
+    _sql_constraints = [
+            ('platform_product_unique', 'unique(platform_id, product_tmpl_id)','This product sample already exists in this platform')
+            ]
+
     @api.depends('product_tmpl_ids')
     def _compute_product_tmpl_id(self):
         for s in self:
@@ -131,13 +139,19 @@ class eCommerceProductSample(models.AbstractModel):
         for s in self:
             s.product_tmpl_ids = (s.product_tmpl_id)
 
-    _sql_constraints = [
-            ('platform_product_unique', 'unique(platform_id, product_tmpl_id)','This product sample already exists in this platform')
-            ]
+    def unlink(self):
+        self = self.exists()
+        self.mapped('ecomm_attribute_lines').unlink()
+        self.mapped('ecomm_product_image_ids').unlink()
+        return super(eCommerceProductSample, self).unlink()
+
+    @api.onchange('ecomm_categ_id')
+    def onchange_ecomm_categ_id(self):
+        getattr(self, '_onchange_ecomm_categ_id_{}'.format(self.platform_id.platform))()
 
 class eCommerceProductTemplate(models.Model):
     _name = 'ecommerce.product.template'
-    _description = "Product Item (Template) which might contains variants"
+    _description = "eCommerce Product"
 
     name = fields.Char()
     description = fields.Text()
@@ -146,21 +160,23 @@ class eCommerceProductTemplate(models.Model):
     sku = fields.Char()
     shop_id = fields.Many2one('ecommerce.shop', required=True)
     platform_id = fields.Many2one('ecommerce.platform', related="shop_id.platform_id", store=True)
-    platform_item_idn = fields.Char(string=_("ID Number"),index=True, required=True)
-    ecomm_product_sample_id = fields.Many2one('ecommerce.product.sample')
+    platform_item_idn = fields.Char(string=_("ID Number"),index=True)
     product_tmpl_id = fields.Many2one('product.template')
     product_product_id = fields.Many2one('product.product', string=_("Single Variant"))
     ecomm_product_product_ids = fields.One2many('ecommerce.product.product', 'ecomm_product_tmpl_id', string=_("Variants"))
-    ecomm_product_image_ids = fields.One2many('ecommerce.product.image', 'ecomm_product_tmpl_id', string=_("Images"))
+    carrier_ids = fields.One2many('ecommerce.product.carrier', 'ecomm_product_tmpl_id', auto_join=True, string=_('Delivery Methods'))
+    #add_image_ids = fields.One2many('ir.attachment', 'res_id',
+    #        domain= lambda self: [('res_model', '=', self._name),('mimetype', 'ilike', 'image')],
+    #        string='Add Images')
+    ecomm_product_image_ids = fields.One2many('ecommerce.product.image', 'res_id', string=_("Images"),
+            auto_join=True, domain = [('res_model','=','ecommerce.product.template')])
     auto_update_stock = fields.Boolean()
+    has_sample = fields.Boolean(compute='compute_has_sample')
     _last_info_update = fields.Datetime(string=_("Info Updated On"))
     _last_sync = fields.Datetime(strong=_("Last Sync"))
     #_sync_res = fields.Selection([('fail',_("Fail")),('success',_("Success"))], string=_("Sync Result"))
 
-    model_object_field = fields.Many2one('ir.model.fields', string="Field",
-                                         help="Select target field from the related document model.\n"
-                                              "If it is a relationship field you will be able to select "
-                                              "a target field at the destination of the relationship.")
+    model_object_field = fields.Many2one('ir.model.fields', string="Field")
     sub_object = fields.Many2one('ir.model', 'Sub-model', readonly=True,
                                  help="When a relationship field is selected as first field, "
                                       "this field shows the document model the relationship goes to.")
@@ -259,9 +275,14 @@ class eCommerceProductTemplate(models.Model):
             "target": "new",
         }
 
-    def update_info(self, data={}):
+    def update_info(self, vals={}, image=False):
         for p in self:
-            getattr(p, "_update_info_{}".format(p.platform_id.platform))(data=data)
+            if image: getattr(p, '_update_image_{}'.format(p.platform_id.platform))()
+            getattr(p, "_update_info_{}".format(p.platform_id.platform))(vals=vals)
+
+    def add_to_shop(self, val={}):
+        for p in self:
+            getattr(p, '_add_to_shop_{}'.format(p.platform_id.platform))(vals=vals)
 
     def update_stock(self):
         platform_id = self.mapped('platform_id')
@@ -319,16 +340,57 @@ class eCommerceProductTemplate(models.Model):
                     'ecomm_product_product_ids': [(1, p.id, {'product_product_id': False}) for p in item.ecomm_product_product_ids]
                 })
 
+    @api.onchange('product_tmpl_id', 'product_product_id')
+    def onchange_product_id(self):
+        if self.platform_id:
+            getattr(self, '_onchange_product_id_{}'.format(self.platform_id.platform))()
+        elif self._context.get('platform'):
+            getattr(self, '_onchange_product_id_{}'.format(self._context.get('platform')))()
+
+    @api.onchange('shop_id')
+    def onchange_shop_id(self):
+        if self.shop_id:
+            getattr(self, '_onchange_shop_id_{}'.format(self.platform_id.platform))()
+
+    @api.onchange()
+    def load_demo_value(self):
+        self.ensure_one()
+        sample = self.product_tmpl_id and self.product_tmpl_id.mapped('{}_product_sample_id'.format(self.platform_id.platform))
+        if not sample: return
+        
+        return {'value':{
+            'name': self.ecomm_product_sample_id.name,
+            'description': self.ecomm_product_sample_id.description,
+            'ecomm_product_image_ids': [(5, _,_)] + [(0, _,{
+                'res_model': 'ecommerce.product.template',
+                'image_url': i.image_url,
+            }) for i in sample.ecomm_product_image_ids]
+        }}
+
+    @api.depends('product_tmpl_id', 'platform_id')
+    def compute_has_sample(self):
+        for i in self:
+            if i.product_tmpl_id and i.platform_id and i.product_tmpl_id.mapped('{}_product_sample_id'.format(i.platform_id.platform)): 
+                i.has_sample = True
+            else:
+                i.has_sample = False
+
 
 class eCommerceProductProduct(models.Model):
     _name = 'ecommerce.product.product'
-    _description = "Real Product (Variant)"
+    _description = "eCommerce Product Variant"
 
     name = fields.Char()
-    platform_variant_idn = fields.Char(index=True, required=True)
-    product_product_id = fields.Many2one('product.product')
-    ecomm_product_tmpl_id = fields.Many2one('ecommerce.product.template', ondelete='cascade')
+    platform_variant_idn = fields.Char(index=True, readonly=True)
+    product_product_id = fields.Many2one('product.product', domain=lambda self: ['product_tmpl_id','=',self.ecomm_product_tmpl_id])
+    ecomm_product_tmpl_id = fields.Many2one('ecommerce.product.template', ondelete='cascade', required=True)
     sku = fields.Char()
+
+    @api.onchange(product_product_id)
+    def onchange_product_product_id(self):
+        if not self.platform_variant_idn: self.sku = self.product_product_id.default_code
+
+
 
 
 class eCommerceProductImage(models.Model):
@@ -338,5 +400,34 @@ class eCommerceProductImage(models.Model):
 
     sequence = fields.Integer()
     name = fields.Char('Name')
-    image_url = fields.Char('Image Url')
-    ecomm_product_tmpl_id = fields.Many2one('ecommerce.product.template','Related Product')
+    image_id = fields.Many2one('ir.attachment','Image Attachment')
+    image_url = fields.Char('Image Url', compute='compute_image_url', inverse='inverse_image_url', store=True)
+    image_url_view = fields.Char('Image', related='image_url')
+    image = fields.Binary('Image', attachment=True)
+    res_id = fields.Integer()
+    res_model = fields.Char()
+    res_field = fields.Char()
+
+    #ecomm_product_tmpl_id = fields.Many2one('ecommerce.product.template','Related Product')
+
+    @api.depends('image')
+    def compute_image_url(self):
+        for i in self:
+            i.image_id = self.env['ir.attachment'].search([
+                ('res_model','=','ecommerce.product.image'),
+                ('res_id','=',i.id),
+                ('res_field', '=', 'image')])[:1]
+            if i.image_id:
+                i.image_url = self.env['ir.config_parameter'].get_param('web.base.url') + i.image_id.local_url
+
+    def inverse_image_url(self):
+        for i in self:
+            i.image_id = False
+            i.image = False
+
+    def refresh(self):
+        return
+
+#    @api.onchange('image_url')
+#    def onchange_image_url(self):
+#        self.image_url_view = self.image_url

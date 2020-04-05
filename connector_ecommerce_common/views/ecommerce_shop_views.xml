@@ -49,7 +49,8 @@
                             <field name="is_main"/>
                             <field name="auto_sync" widget="boolean_toggle"/>
                         </group>
-
+                        <notebook>
+                        </notebook>
                     </sheet>
                 </form>
             </field>

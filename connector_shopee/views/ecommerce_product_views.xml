@@ -7,38 +7,73 @@
             <field name="model">shopee.product.sample</field>
             <field name="arch" type="xml">
                 <form string="Shopee Product">
-                    <group string="Basic Infomation">
-                        <field name="product_tmpl_id" invisible="1"/>
-                        <field name="name"/>
-                        <field name="description"/>
-                        <field name="ecomm_categ_id" invisible="1"/>
-                        <field name="category_name"/>
-                        <field name="categ_attribute_ids" widget="one2many_list"/>
-                    </group>
-                    <group string="Selling Infomation">
-                    </group>
-                    <group string="Images">
-                    </group>
-                    <group string="Logistics">
-                        <group col="2" colspan="4">
-                            <field name="weight" widget="char"/>
+                    <sheet>
+                        <group string="Basic Infomation">
+                            <field name="ecomm_categ_selector_id" required="1" options="{'create_edit': false, 'search_more': false, 'limit': 0}"/>
+                            <field name="product_tmpl_id" invisible="1"/>
+                            <field name="name"/>
+                            <field name="description"/>
+                            <field name="ecomm_categ_id" invisible="1"/>
+                            <field name="platform_id" invisible="1"/>
                         </group>
-                        <group col="4" colspan="4">
-                            <label for="measures"  string="Package measures (cm)" colspan="1"/>
-                            <div name="measures" colspan="3" col="3">
-                                <group col="3" colspan="3">
-                                    <field name="package_width" nolabel="1" colspan="1" placeholder="Width" widget="char"/>
-                                    <field name="package_length" nolabel="1" colspan="1" placeholder="Length" widget="char"/>
-                                    <field name="package_height" nolabel="1" colspan="1" placeholder="Height" widget="char"/>
-                                </group>
-                            </div>
+                        <group>
+                            <field name="ecomm_attribute_lines" nolabel="1">
+                                <tree create="false" delete="false" editable="bottom">
+                                    <field name="attr_id" readonly="1" force_save="1"/>
+                                    <field name="value_id" attrs="{'required': [('mandatory','=',True)]}" options="{'create': true, 'create_edit': false, 'no_open': true}" context="{'default_attr_id': attr_id}" domain="[('attr_id','=',attr_id)]"/>
+                                    <field name="mandatory" invisible="1"/>
+                                    <field name="res_id" invisible="1"/>
+                                    <field name="res_model" invisible="1"/>
+                                </tree>
+                            </field>
                         </group>
-                    </group>
-                    <group string="Other Infomations">
-                        <field name="is_pre_order"/>
-                        <field name="condition"/>
-                        <field name="days_to_ship"/>
-                    </group>
+                        <group string="Selling Infomation">
+                        </group>
+                        <group string="Images">
+                            <field name="ecomm_product_image_ids" class="o_website_sale_image_list" context="{'default_name': name, 'default_res_id': active_id, 'default_res_model': active_model}" nolabel="1">
+                                <kanban string="Product Images" class="o_attachments_previews">
+                                    <field name="id"/>
+                                    <field name="name"/>
+                                    <field name="image_url"/>
+                                    <templates>
+                                        <t t-name="kanban-box">
+                                            <div class="o_attachment oe_kanban_global_click o_website_sale_image_card">
+                                                <div class="o_attachment_wrap">
+                                                    <div class="o_image_box">
+                                                        <div class="o_attachment_image" t-attf-style="background-image:url({{record.image_url.value}});"/>
+                                                        <div t-attf-class="o_image_overlay" t-att-title="record.name.value"/>
+                                                        <div class="o_website_sale_image_card_title" t-att-title="record.name.value">
+                                                            <field name="name"/>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </t>
+                                    </templates>
+                                </kanban>
+                            </field>
+                        </group>
+                        <group string="Logistics">
+                            <group col="2" colspan="4">
+                                <field name="weight" widget="char"/>
+                            </group>
+                            <group col="4" colspan="4">
+                                <label for="measures"  string="Package measures (cm)" colspan="1"/>
+                                <div name="measures" colspan="3" col="3">
+                                    <group col="3" colspan="3">
+                                        <field name="package_width" nolabel="1" colspan="1" placeholder="Width" widget="char"/>
+                                        <field name="package_length" nolabel="1" colspan="1" placeholder="Length" widget="char"/>
+                                        <field name="package_height" nolabel="1" colspan="1" placeholder="Height" widget="char"/>
+                                    </group>
+                                </div>
+                            </group>
+                        </group>
+                        <group string="Other Infomations">
+                            <field name="is_pre_order"/>
+                            <field name="condition"/>
+                            <field name="days_to_ship"/>
+                        </group>
+                    </sheet>
                 </form>
             </field>
         </record>

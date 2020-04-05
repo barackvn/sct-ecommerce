@@ -186,15 +186,23 @@ class eCommerceShop(models.Model):
         self._last_sku_sync = fields.Datetime.now()
 
     @api.model
-    def _sync_orders_lazada(self, offset=0, limit=100, update_after = False, **kw):
+    def _sync_orders_lazada(self, **kw):
         shops = self.env['ecommerce.shop'].search([('platform_id.platform','=','lazada')])
         for shop in shops:
-            update_after = update_after or shop._last_order_sync.isoformat()
-            resp = shop._py_client_lazada_request('/orders/get','GET', offset=offset, limit=limit, update_after=update_after, **kw)
+            kw.update({
+                'offset': kw.get('offset',0),
+                'limit': kw.get('limit',100),
+                'sort_by': kw.get('sort_by','updated_at'),
+                'sort_direction': kw.get('sort_direction', 'ASC'),
+                'update_after': kw.get('update_after', shop._last_order_sync.isoformat())
+            })
+            resp = shop._py_client_lazada_request('/orders/get','GET', **kw)
             if not resp.get('data').get('count'):
                 continue
-            for lazada_order in resp.get('data').get('orders'):
-                detail = shop._py_client_lazada_request('/order/items/get','GET', order_id = lazada_order['order_id'])
+            order_ids = [l_o['order_id'] for l_o in resp.get('data').get('orders')]
+            dresp = shop._py_client_lazada_request('/orders/items/get','GET', order_ids = str(order_ids)) 
+            for lazada_order, o_detail in zip(resp.get('data').get('orders'), sorted(dresp.get('data'),key=lambda d: d['order_items'][0]['updated_at'])):
+                detail = o_detail.get('order_items')
                 order = self.env['sale.order'].search([
                     ('ecommerce_shop_id','=',shop.id),
                     ('client_order_ref','=',lazada_order['order_id'])
@@ -205,9 +213,7 @@ class eCommerceShop(models.Model):
 
     def _create_order_lazada(self, order, detail=False):
         self.ensure_one()
-        detail = detail or self._py_client_lazada_request('/order/items/get','GET', order_id = order['order_id'])
-        if detail['code'] != '0':
-            return self._create_order_lazada(order)
+        detail = detail or self._py_client_lazada_request('/order/items/get','GET', order_id = order['order_id']).get('data')
         address = order['address_shipping']
         partner_id = self.env['res.partner'].search([
             ('type','!=','delivery'),
@@ -240,7 +246,8 @@ class eCommerceShop(models.Model):
             'ecommerce_shop_id' : self.id,
             'team_id': self.team_id and self.team_id.id,
             'client_order_ref': order['order_id'],
-            'partner_id': shipping_id.id,
+            'partner_id': partner_id.id,
+            'partner_shipping_id': shipping_id.id,
             'order_line':[(0, _, {
                 'product_id' : item['shop_sku'] and self.env['ecommerce.product.product'].search([
                     ('platform_variant_idn','=',item['shop_sku'])
@@ -249,7 +256,7 @@ class eCommerceShop(models.Model):
                 'price_unit': item['paid_price'],
                 'product_uom_qty': 1,
                     #'route_id': self.route_id.id,
-                }) for item in detail['data']], 
+                }) for item in detail], 
             })
         return sale_order
 

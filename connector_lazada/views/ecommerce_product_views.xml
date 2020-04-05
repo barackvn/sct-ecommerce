@@ -10,10 +10,8 @@
                     <group string="Basic Infomation">
                         <field name="product_tmpl_id" invisible="1"/>
                         <field name="name"/>
-                        <field name="category_name"/>
                         <field name="ecomm_categ_id"/>
                         <field name="video"/>
-                        <field name="categ_attribute_ids" widget="one2many_list"/>
                     </group>
                     <group string="Detailed Description">
                         <field name="short_description"/>

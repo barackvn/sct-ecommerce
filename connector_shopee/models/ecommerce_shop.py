@@ -45,7 +45,7 @@ class eCommercerShop(models.Model):
 #        _logger.info(self.name)
 
 
-    def _py_client_shopee(self):
+    def _py_client_shopee(self, platform=False):
         self.ensure_one()
         return pyshopee.Client(self.ecomm_shop_idn, self.platform_id.partner_id, self.platform_id.key)
 
@@ -298,7 +298,8 @@ class eCommercerShop(models.Model):
                 'ecommerce_shop_id' : self.id,
                 'team_id': self.team_id and self.team_id.id,
                 'client_order_ref': ordersn,
-                'partner_id': shipping_id.id,
+                'partner_id': partner_id.id,
+                'partner_shipping_id': shipping_id.id,
                 'order_line':[(0, _, {
                     'product_id' : item['variation_id'] and self.env['ecommerce.product.product'].search([
                         ('platform_variant_idn','=',str(item['variation_id'])),

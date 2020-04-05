@@ -73,7 +73,7 @@ class eCommerceShop(models.Model):
             ('state','=', 'sale'),
             ('need_tracking_no','=',True),
             ('confirmation_date','>',(datetime.now()-timedelta(days=15)).strftime("%Y-%m-%d %H:%M:%S"))
-            ], limit=200)
+            ], limit=100)
         for order in orders:
             logistic = order.ecommerce_shop_id._py_client_shopee().logistic.get_order_logistic(ordersn=order.client_order_ref).get('logistics')
             if logistic:
@@ -91,15 +91,24 @@ class eCommerceShop(models.Model):
         self.ensure_one()
         logistics = self._py_client_shopee().logistic.get_logistics().get('logistics',[])
         for l in logistics:
-            self.env['ecommerce.carrier'].create({
-                'name': l.get('logistic_name'),
-                'logistic_idn': l.get('logistic_id'),
-                'enable': l.get('enabled'),
-                'default': l.get('preferred'),
-                'cod': l.get('has_cod'),
-                'platform_id': self.platform_id.id,
-                'carrier_id' : self.env['delivery.carrier'].create({
-                    'name': l.get('logistic_name'),
-                    'product_id': self.env.ref('delivery.product_product_delivery').id
-                    }).id
+            carrier = self.env['ecommerce.shop.carrier'].search([
+                ('shop_id', '=', self.id),
+                ('ecomm_carrier_id.logistic_idn','=',l.get('logistic_id'))
+            ])
+            if carrier: 
+                carrier[0].write({
+                    'enable': l.get('enabled'),
+                    'default': l.get('preferred'),
+                    'cod': l.get('has_cod'),
+                })
+            else:
+                self.env['ecommerce.shop.carrier'].create({
+                    'ecomm_carrier_id': self.env['ecommerce.carrier'].search([
+                        ('platform_id','=', self.platform_id.id),
+                        ('logistic_idn','=',l.get('logistic_id')),
+                    ])[:1].id,
+                    'shop_id': self.id,
+                    'enable': l.get('enabled'),
+                    'default': l.get('preferred'),
+                    'cod': l.get('has_cod'),
                 })
