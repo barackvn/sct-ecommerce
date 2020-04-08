@@ -113,10 +113,11 @@ class eCommercerShop(models.Model):
     def _sync_product_shopee(self, **kw):
         self.ensure_one()
         model = self.env['ecommerce.product.template']
-        if not kw.get('update_time_from'): kw['update_time_from'] =  self._last_product_sync and int(self._last_product_sync.timestamp()) or int((datetime.now()-timedelta(days=15)).timestamp())
-        if not kw.get('pagination_offset'): kw['pagination_offset'] = 0
-        if not kw.get('pagination_entries_per_page'): kw['pagination_entries_per_page'] = 100
-        if not kw.get('update_time_to'): kw['update_time_to'] = int(datetime.now().timestamp())
+        kw.setdefault('pagination_offset', 0)
+        kw.setdefault('pagination_entries_per_page', 100)
+        if self._last_product_sync:
+            kw.setdefault('update_time_to', int(datetime.now().timestamp()))
+            kw.setdefault('update_time_from', int(self._last_product_sync.timestamp()))
         resp = self._py_client_shopee().item.get_item_list(**kw)
         for item in resp['items']:
             details = self._py_client_shopee().item.get_item_detail(item_id=item.get('item_id',0)).get('item',{})
@@ -210,7 +211,7 @@ class eCommercerShop(models.Model):
                                 'product_product_id': tmpl.product_variant_ids.filtered(lambda r: r.default_code == v.get("variation_sku"))[:1].id,
                                 }) for v in details.get("variations", [])],
                             })
-                        if not tmpl.shopee_product_sample_id:
+                        if not tmpl.shopee_product_preset_id:
                             details.update({
                                 'platform_id': platform_id,
                                 'ecomm_categ_id': self.env['ecommerce.category'].search([
@@ -219,7 +220,7 @@ class eCommercerShop(models.Model):
                                     ]).id,
                                 'product_tmpl_id': tmpl.id,
                                 })
-                            self.env['shopee.product.sample'].create(details)
+                            self.env['shopee.product.preset'].create(details)
             elif item.get('item_sku',''): 
                 prods = self.env['product.product'].search([('default_code','=',item.get('item_sku','').strip())])
 #                _logger.info(prods)
@@ -235,7 +236,7 @@ class eCommercerShop(models.Model):
                             'product_tmpl_id': prod.product_tmpl_id.id,
                             'product_product_id': prod.id,
                             })
-                        if not prod.product_tmpl_id.shopee_product_sample_id:
+                        if not prod.product_tmpl_id.shopee_product_preset_id:
                             details.update({
                                 'platform_id': platform_id,
                                 'ecomm_categ_id': self.env['ecommerce.category'].search([
@@ -244,7 +245,7 @@ class eCommercerShop(models.Model):
                                     ]).id,
                                 'product_tmpl_id': prod.product_tmpl_id.id,
                                 })
-                            self.env['shopee.product.sample'].create(details)
+                            self.env['shopee.product.preset'].create(details)
                 
         if resp['more']:
             self._sync_product_sku_match_shopee(offset=offset+limit, limit=limit)

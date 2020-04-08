@@ -9,8 +9,8 @@
             <field name="arch" type="xml">
                 <xpath expr="//group[@name='shop']" position="after">
                     <group name="shopee" string="Shopee" col="4">
-                        <field name="shopee_product_sample_id" attrs="{'invisible': [('shopee_product_sample_id','=', False)]}"/>
-                        <button name="%(connector_ecommerce_common.ecomm_category_selector_view_action)d" string="Create Shopee Product Sample" type="action" context="{'platform': 'shopee', 'product_tmpl_id': active_id}" attrs="{'invisible': [('shopee_product_sample_id','!=', False)]}"/>
+                        <field name="shopee_product_preset_id" attrs="{'invisible': [('shopee_product_preset_id','=', False)]}"/>
+                        <button name="%(connector_ecommerce_common.ecomm_category_selector_view_action)d" string="Create Shopee Product Preset" type="action" context="{'platform': 'shopee', 'product_tmpl_id': active_id}" attrs="{'invisible': [('shopee_product_preset_id','!=', False)]}"/>
                         <label for="shopee_product_tmpl_ids" string="Synchronized Items" colspan="4"/>
                         <field name="shopee_product_tmpl_ids" nolabel="1" widget="one2many_list" colspan="4" context="{'platform': 'shopee', 'default_product_tmpl_id': active_id}">
                             <tree create="1" string="Items">
@@ -27,9 +27,9 @@
             </field>
         </record>
 
-        <!-- record model="ir.ui.view" id="shopee_product_sample_form_view">
-            <field name="name">shopee.product.sample.form</field>
-            <field name="model">shopee.product.sample</field>
+        <!-- record model="ir.ui.view" id="shopee_product_preset_form_view">
+            <field name="name">shopee.product.preset.form</field>
+            <field name="model">shopee.product.preset</field>
             <field name="arch" type="xml">
                 <form string="Shopee Product">
                     <group>

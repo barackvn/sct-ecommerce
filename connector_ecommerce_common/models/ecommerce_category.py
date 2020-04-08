@@ -56,7 +56,13 @@ class eCommerceCategorySelector(models.Model):
     def onchange_tier3(self):
         self.tier4 = False
     
-    def action_create_sample(self):
+    def action_create_preset(self):
         self.ensure_one()
-        return getattr(self, "_action_create_sample_{}".format(self.platform_id.platform))()
+        ctx = {
+            'default_ecomm_categ_selector_id': self.id,
+            'default_platform_id': self_context.get('default_platform_id'),
+            'platform': self._context.get('platform'),
+            'default_product_tmpl_id': self._context.get('default_product_tmpl_id')
+        }
+        return getattr(self, "_action_create_preset_{}".format(self.platform_id and self.platform_id.platform or self._context.get('platform')))(ctx)
                                                         

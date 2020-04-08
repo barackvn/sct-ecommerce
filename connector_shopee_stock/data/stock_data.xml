@@ -9,6 +9,10 @@
 
         <function model="ir.model.data" name="_update_xmlids">
             <value model="base" eval="[{
+                'xml_id': 'connector_shopee_stock.stock_location_shopee_view',
+                'record': obj().env.ref('connector_shopee_stock.stock_warehouse_shopee').view_location_id,
+                'noupdate': True,
+            }, {
                 'xml_id': 'connector_shopee_stock.stock_location_shopee_stock',
                 'record': obj().env.ref('connector_shopee_stock.stock_warehouse_shopee').lot_stock_id,
                 'noupdate': True,
@@ -23,6 +27,12 @@
             }]"/>
         </function>
 
+        <record id="stock_location_shopee_transit" model='stock.location'>
+            <field name="name">Transit</field>
+            <field name="location_id" ref="stock_location_shopee_view"/>
+            <field name="usage">transit</field>
+            <field name="barcode">SW-SHIP</field>
+        </record>
         <record id="stock_location_route_shopee" model='stock.location.route'>
             <field name="name">Shopee Route</field>
             <field name="company_id"></field>
@@ -34,17 +44,16 @@
             <field name="action">pull</field>
             <field name="picking_type_id" ref="stock.picking_type_out"/>
             <field name="location_src_id" ref="stock.stock_location_stock"/>
-            <field name="location_id" ref="connector_shopee_stock.stock_location_shopee_stock"/>
+            <field name="location_id" ref="connector_shopee_stock.stock_location_shopee_transit"/>
             <field name="procure_method">make_to_stock</field>
             <field name="route_id" ref="stock_location_route_shopee"/>
             <field name="sequence">20</field>
-        </record>
-        
+        </record>        
         <record id="stock_rule_shopee2" model='stock.rule'>
             <field name="name">Shopee → Customer</field>
             <field name="action">pull</field>
             <field name="picking_type_id" ref="connector_shopee_stock.stock_picking_type_shopee_out"/>
-            <field name="location_src_id" ref="connector_shopee_stock.stock_location_shopee_stock"/>
+            <field name="location_src_id" ref="connector_shopee_stock.stock_location_shopee_transit"/>
             <field name="location_id" ref="stock.stock_location_customers"/>
             <field name="procure_method">make_to_order</field>
             <field name="route_id" ref="stock_location_route_shopee"/>

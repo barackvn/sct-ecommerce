@@ -111,23 +111,23 @@ try:
 except ImportError:
     _logger.warning("jinja2 not available, templating features will not work!")
 
-class eCommerceProductSample(models.AbstractModel):
-    _name = 'ecommerce.product.sample'
+class eCommerceProductPreset(models.AbstractModel):
+    _name = 'ecommerce.product.preset'
 
     ecomm_categ_selector_id= fields.Many2one('ecommerce.category.selector')
     name = fields.Char()
     ecomm_categ_id = fields.Many2one('ecommerce.category', related='ecomm_categ_selector_id.ecomm_categ_id', store=True)
     platform_id = fields.Many2one('ecommerce.platform', required=True)
-    product_tmpl_ids = fields.One2many('product.template', 'ecomm_product_sample_id', readonly=True)
+    product_tmpl_ids = fields.One2many('product.template', 'ecomm_product_preset_id', readonly=True)
     product_tmpl_id = fields.Many2one('product.template', ondelete='cascade', store=True,
             compute='_compute_product_tmpl_id', inverse='_inverse_product_tmpl_id')
-    ecomm_attribute_lines = fields.One2many('ecommerce.product.sample.attribute.line', 'res_id', 'Category Attributes', 
+    ecomm_attribute_lines = fields.One2many('ecommerce.product.preset.attribute.line', 'res_id', 'Category Attributes', 
             auto_join=True, domain = lambda self: [('res_model','=', self._name)])
     ecomm_product_image_ids = fields.One2many('ecommerce.product.image', 'res_id', 'Images', 
             auto_join=True, domain = lambda self: [('res_model','=',self._name)])
 
     _sql_constraints = [
-            ('platform_product_unique', 'unique(platform_id, product_tmpl_id)','This product sample already exists in this platform')
+            ('platform_product_unique', 'unique(platform_id, product_tmpl_id)','This product preset already exists in this platform')
             ]
 
     @api.depends('product_tmpl_ids')
@@ -143,11 +143,13 @@ class eCommerceProductSample(models.AbstractModel):
         self = self.exists()
         self.mapped('ecomm_attribute_lines').unlink()
         self.mapped('ecomm_product_image_ids').unlink()
-        return super(eCommerceProductSample, self).unlink()
+        return super(eCommerceProductPreset, self).unlink()
 
     @api.onchange('ecomm_categ_id')
     def onchange_ecomm_categ_id(self):
-        getattr(self, '_onchange_ecomm_categ_id_{}'.format(self.platform_id.platform))()
+        if self.platform_id:
+            getattr(self, '_onchange_ecomm_categ_id_{}'.format(self.platform_id.platform))()
+
 
 class eCommerceProductTemplate(models.Model):
     _name = 'ecommerce.product.template'
@@ -171,7 +173,7 @@ class eCommerceProductTemplate(models.Model):
     ecomm_product_image_ids = fields.One2many('ecommerce.product.image', 'res_id', string=_("Images"),
             auto_join=True, domain = [('res_model','=','ecommerce.product.template')])
     auto_update_stock = fields.Boolean()
-    has_sample = fields.Boolean(compute='compute_has_sample')
+    has_preset = fields.Boolean(compute='compute_has_preset')
     _last_info_update = fields.Datetime(string=_("Info Updated On"))
     _last_sync = fields.Datetime(strong=_("Last Sync"))
     #_sync_res = fields.Selection([('fail',_("Fail")),('success',_("Success"))], string=_("Sync Result"))
@@ -275,14 +277,14 @@ class eCommerceProductTemplate(models.Model):
             "target": "new",
         }
 
-    def update_info(self, vals={}, image=False):
+    def update_info(self, context=None, data={}, image=False):
         for p in self:
             if image: getattr(p, '_update_image_{}'.format(p.platform_id.platform))()
-            getattr(p, "_update_info_{}".format(p.platform_id.platform))(vals=vals)
+            getattr(p, "_update_info_{}".format(p.platform_id.platform))(data=data)
 
-    def add_to_shop(self, val={}):
+    def add_to_shop(self, context=None, data=None):
         for p in self:
-            getattr(p, '_add_to_shop_{}'.format(p.platform_id.platform))(vals=vals)
+            getattr(p, '_add_to_shop_{}'.format(p.platform_id.platform))(data=data)
 
     def update_stock(self):
         platform_id = self.mapped('platform_id')
@@ -351,30 +353,47 @@ class eCommerceProductTemplate(models.Model):
     def onchange_shop_id(self):
         if self.shop_id:
             getattr(self, '_onchange_shop_id_{}'.format(self.platform_id.platform))()
-
+    
     @api.onchange()
     def load_demo_value(self):
         self.ensure_one()
-        sample = self.product_tmpl_id and self.product_tmpl_id.mapped('{}_product_sample_id'.format(self.platform_id.platform))
-        if not sample: return
+        preset = self.product_tmpl_id and self.product_tmpl_id.mapped('{}_product_preset_id'.format(self.platform_id.platform))
+        if not preset: return
         
         return {'value':{
-            'name': self.ecomm_product_sample_id.name,
-            'description': self.ecomm_product_sample_id.description,
+            'name': self.ecomm_product_preset_id.name,
+            'description': self.ecomm_product_preset_id.description,
             'ecomm_product_image_ids': [(5, _,_)] + [(0, _,{
                 'res_model': 'ecommerce.product.template',
                 'image_url': i.image_url,
-            }) for i in sample.ecomm_product_image_ids]
+            }) for i in preset.ecomm_product_image_ids]
         }}
 
     @api.depends('product_tmpl_id', 'platform_id')
-    def compute_has_sample(self):
+    def compute_has_preset(self):
         for i in self:
-            if i.product_tmpl_id and i.platform_id and i.product_tmpl_id.mapped('{}_product_sample_id'.format(i.platform_id.platform)): 
-                i.has_sample = True
+            if i.product_tmpl_id and i.platform_id and i.product_tmpl_id.mapped('{}_product_preset_id'.format(i.platform_id.platform)): 
+                i.has_preset = True
             else:
-                i.has_sample = False
+                i.has_preset = False
 
+    def load_preset(self):
+        self.ensure_one()
+        getattr(self, '_load_preset_{}'.format(self.platform_id.platform))()
+
+    def write(self, values):
+        if len(self) == 1:
+            for i in values.get('ecomm_product_image_ids',[]):
+                if i[0] == 0: i[2].update({'res_id': self.id, 'res_model': self._name})
+        super(eCommerceProductTemplate, self).write(values)
+
+    @api.model
+    def create(self, values):
+        image_values = [t[2] for t in values.pop('ecomm_product_image_ids') if t[0]==0]
+        product = super(eCommerceProductTemplate, self).create(values)
+        for val in image_values: val.update({'res_id': product.id, 'res_model': product._name}) 
+        self.env['ecommerce.product.image'].create(image_values)
+        return product
 
 class eCommerceProductProduct(models.Model):
     _name = 'ecommerce.product.product'
@@ -382,11 +401,11 @@ class eCommerceProductProduct(models.Model):
 
     name = fields.Char()
     platform_variant_idn = fields.Char(index=True, readonly=True)
-    product_product_id = fields.Many2one('product.product', domain=lambda self: ['product_tmpl_id','=',self.ecomm_product_tmpl_id])
+    product_product_id = fields.Many2one('product.product')
     ecomm_product_tmpl_id = fields.Many2one('ecommerce.product.template', ondelete='cascade', required=True)
     sku = fields.Char()
 
-    @api.onchange(product_product_id)
+    @api.onchange('product_product_id')
     def onchange_product_product_id(self):
         if not self.platform_variant_idn: self.sku = self.product_product_id.default_code
 
@@ -413,17 +432,19 @@ class eCommerceProductImage(models.Model):
     @api.depends('image')
     def compute_image_url(self):
         for i in self:
-            i.image_id = self.env['ir.attachment'].search([
+            img = self.env['ir.attachment'].sudo().search([
                 ('res_model','=','ecommerce.product.image'),
                 ('res_id','=',i.id),
-                ('res_field', '=', 'image')])[:1]
-            if i.image_id:
-                i.image_url = self.env['ir.config_parameter'].get_param('web.base.url') + i.image_id.local_url
+                ('res_field', '=', 'image')
+                ])[:1]
+            if img:
+                img.public=True
+                i.image_url = self.env['ir.config_parameter'].get_param('web.base.url') + img.local_url
 
     def inverse_image_url(self):
         for i in self:
-            i.image_id = False
             i.image = False
+        return
 
     def refresh(self):
         return

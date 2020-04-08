@@ -2,9 +2,9 @@
 
 <odoo>
     <data>
-        <record model="ir.ui.view" id="shopee_product_sample_form_view">
-            <field name="name">shopee.product.sample.form</field>
-            <field name="model">shopee.product.sample</field>
+        <record model="ir.ui.view" id="shopee_product_preset_form_view">
+            <field name="name">shopee.product.preset.form</field>
+            <field name="model">shopee.product.preset</field>
             <field name="arch" type="xml">
                 <form string="Shopee Product">
                     <sheet>
@@ -55,15 +55,15 @@
                         </group>
                         <group string="Logistics">
                             <group col="2" colspan="4">
-                                <field name="weight" widget="char"/>
+                                <field name="weight"/>
                             </group>
                             <group col="4" colspan="4">
                                 <label for="measures"  string="Package measures (cm)" colspan="1"/>
                                 <div name="measures" colspan="3" col="3">
                                     <group col="3" colspan="3">
-                                        <field name="package_width" nolabel="1" colspan="1" placeholder="Width" widget="char"/>
-                                        <field name="package_length" nolabel="1" colspan="1" placeholder="Length" widget="char"/>
-                                        <field name="package_height" nolabel="1" colspan="1" placeholder="Height" widget="char"/>
+                                        <field name="package_width" nolabel="1" colspan="1" placeholder="Width"/>
+                                        <field name="package_length" nolabel="1" colspan="1" placeholder="Length"/>
+                                        <field name="package_height" nolabel="1" colspan="1" placeholder="Height"/>
                                     </group>
                                 </div>
                             </group>

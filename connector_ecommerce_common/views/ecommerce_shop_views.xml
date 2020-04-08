@@ -34,7 +34,7 @@
                             <button type="object" name="sync_product" icon="fa-refresh" class="oe_stat_button">
                                 <span class="o_stat_text">Sync Products Now</span>
                             </button>
-                            <button class="oe_stat_button" type="action" name="%(ecomm_product_tmpl_tree)d" icon="fa-list">
+                            <button class="oe_stat_button" type="action" name="%(ecomm_product_tmpl_tree)d" icon="fa-list" context="{'active_id': False, 'active_model': False}">
                                 <div class="o_stat_info">
                                     <field name="ecomm_product_tmpl_count" class="o_stat_value"/>
                                     <span class="o_stat_text">Product(s)</span>

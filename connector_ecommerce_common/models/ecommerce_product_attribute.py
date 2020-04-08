@@ -31,8 +31,8 @@ class eCommerceAttributeValue(models.Model):
             ('value_company_uniq', 'unique (name, attr_id)', 'This attribute value already exists !')
             ]
 
-class eCommerceProductSampleAttributeLine(models.Model):
-    _name = 'ecommerce.product.sample.attribute.line'
+class eCommerceProductPresetAttributeLine(models.Model):
+    _name = 'ecommerce.product.preset.attribute.line'
     _rec_name = 'attr_id'
 
     attr_id = fields.Many2one('ecommerce.attribute', string='eCommerce Attribute', ondelete='restrict', required=True)

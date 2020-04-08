@@ -6,7 +6,7 @@ class ProductTemplate(models.Model):
     _inherit = 'product.template'
 
 #    shopee_sale_ok = fields.Boolean(string=_("Can be Sold with Shopee"), default=True)
-    ecomm_product_sample_id = fields.Many2one('ecommerce.product.sample')
+    ecomm_product_preset_id = fields.Many2one('ecommerce.product.preset')
     ecomm_product_tmpl_ids = fields.One2many('ecommerce.product.template', 'product_tmpl_id')
 #    ecomm_categ_id = fields.Many2one('ecommerce.category')
 #    shopee_category_name = fields.Char(string=_("Shopee Category"), related='shopee_client_category_id.complete_name', readonly=True)

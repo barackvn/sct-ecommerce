@@ -30,6 +30,6 @@ class eCommerceCategorySelector(models.TransientModel):
         self.tier4 = False
 
 
-    def action_create_sample(self):
+    def action_create_preset(self):
         self.ensure_one()
-        return getattr(self, "_action_create_sample_{}".format(self.platform_id.platform))() 
+        return getattr(self, "_action_create_preset_{}".format(self.platform_id.platform))() 

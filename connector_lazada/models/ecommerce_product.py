@@ -12,11 +12,11 @@ def to_xml_str(key, val, prolog=False):
         val = ''.join((to_xml_str(k,v) for v in val))
     return '{prolog}<{key}>{val}</{key}>'.format(prolog='{}'.format(prolog and '<?xml version="1.0" encoding="UTF-8"?>' or ''),key=key,val=val)
 
-class LazadaProductSample(models.Model):
-    _name = 'lazada.product.sample'
-    _inherit = 'ecommerce.product.sample'
+class LazadaProductPreset(models.Model):
+    _name = 'lazada.product.preset'
+    _inherit = 'ecommerce.product.preset'
 
-    product_tmpl_ids = fields.One2many('product.template', 'lazada_product_sample_id', readonly=True)
+    product_tmpl_ids = fields.One2many('product.template', 'lazada_product_preset_id', readonly=True)
     short_description = fields.Html()
     warranty_type = fields.Char(string=_("Warranty Type"))
     warranty = fields.Char(string=_("Warranty Period"))
@@ -67,18 +67,19 @@ class LazadaProductTemplate(models.Model):
                 }) for p in pairs]
             })
 
-    def _update_info_lazada(self,vals={}):
+    def _update_info_lazada(self,data={}):
         self.ensure_one()
-        vals.update({
+        data.update({
             'Attributes': {
                 'name': self.name,
                 'short_description': self.description,
             },
             'Skus': [{
-                    'SellerSku': v.sku,
+                'ShopSku': v.platform_variant_idn,
+                'SellerSku': v.sku,
             } for v in self.ecomm_product_product_ids]
         })
-        resp = self.shop_id._py_client_lazada_request('/product/update',payload=to_xml_str('Request',{'Product': vals}))
+        resp = self.shop_id._py_client_lazada_request('/product/update',payload=to_xml_str('Request',{'Product': data}))
         if resp['code']=='0':
             self._last_info_update = fields.Datetime.now()
 

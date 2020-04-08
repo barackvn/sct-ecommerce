@@ -1,2 +1,2 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_shopee_product_sample,shopee_product_sample,model_shopee_product_sample,,1,1,1,1
+access_shopee_product_preset,shopee_product_preset,model_shopee_product_preset,,1,1,1,1

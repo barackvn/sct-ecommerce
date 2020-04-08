@@ -2,9 +2,9 @@
 
 <odoo>
     <data>
-        <record model="ir.ui.view" id="lazada_product_sample_form_view">
-            <field name="name">lazada.product.sample.form</field>
-            <field name="model">lazada.product.sample</field>
+        <record model="ir.ui.view" id="lazada_product_preset_form_view">
+            <field name="name">lazada.product.preset.form</field>
+            <field name="model">lazada.product.preset</field>
             <field name="arch" type="xml">
                 <form string="Lazada Product">
                     <group string="Basic Infomation">

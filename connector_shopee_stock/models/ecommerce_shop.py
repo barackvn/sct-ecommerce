@@ -53,7 +53,7 @@ class eCommerceShop(models.Model):
                         wiz = wiz_model.create(wiz_model.with_context(active_id = pick_id.id).default_get(wiz_model._fields.keys()))
                         wiz.product_return_moves.write({'to_refund': True})
                         new_picking_id, pick_type_id = wiz._create_returns()
-                        new_picking_id.write({
+                        self.env['stock.picking'].browse(new_picking_id).write({
                             'carrier_id': pick_id.carrier_id.id,
                             'carrier_tracking_ref': pick_id.carrier_tracking_ref
                             })
