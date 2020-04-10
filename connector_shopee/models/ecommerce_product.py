@@ -163,17 +163,23 @@ class ShopeeProductTemplate(models.Model):
                 'name': ', '.join(self.mapped('product_tmpl_id.attribute_line_ids.attribute_id.name')) or 'Variation',
                 'options': [v.name or 'Default' for v in self.ecomm_product_product_ids],
             }]
-            list_resp = self.shop_id._py_client_shopee().item.update_tier_variation_list(item_id=int(self.platform_item_idn), tier_variation=tier_variation)
             add_variant_data = [{
                 'tier_index': [o+i],
                 'stock': int(v.product_product_id.virtual_available > 0 and v.product_product_id.virtual_available or 0) if ((v.product_product_id.product_tmpl_id.type == 'product' or (v.product_product_id.pack_ok == True and 'product' in v.product_product_id.mapped('pack_line_ids.product_id.type'))) and v.product_product_id.product_tmpl_id.inventory_availability not in [False, 'never']) else 1000,
                 'price': v.product_product_id.lst_price > 1000 and v.product_product_id.lst_price or 1000,
                 'variation_sku': v.sku,
-            } for i, v in enumerate(new_v)][0],
-            add_resp = self.shop_id._py_client_shopee().item.add_tier_variation(item_id=int(self.platform_item_idn), variation=add_variant_data)
-            if add_resp.get('item_id'):
+            } for i, v in enumerate(new_v)]
+            if o == 0:
+                resp = self.shop_id._py_client_shopee().item.init_tier_variation(
+                    item_id=int(self.platform_item_idn), 
+                    tier_variation=tier_variation, 
+                    variation=add_variant_data)
+            else:
+                list_resp = self.shop_id._py_client_shopee().item.update_tier_variation_list(item_id=int(self.platform_item_idn), tier_variation=tier_variation)
+                resp = self.shop_id._py_client_shopee().item.add_tier_variation(item_id=int(self.platform_item_idn), variation=add_variant_data)
+            if resp.get('item_id'):
                 for i, v in enumerate(self.ecomm_product_product_ids):
-                    v.platform_variant_idn = add_resp['variation_id_list'][i]['variation_id']
+                    v.platform_variant_idn = resp['variation_id_list'][i]['variation_id']
         data.update({
             'item_id':  int(self.platform_item_idn),
             'name': self.name,

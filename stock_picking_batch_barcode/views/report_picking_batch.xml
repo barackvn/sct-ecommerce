@@ -61,7 +61,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <t t-set="loc_move_line" t-value="loc_move_line.sorted(key=lambda l: (l.product_id.display_name, l.lot_id.name or l.lot_name, l.result_package_id.name))"/>
+                        <t t-set="loc_move_line" t-value="loc_move_line.sorted(key=lambda l: (l.product_id.display_name, l.lot_id and l.lot_id.name or l.lot_name, l.result_package_id.name))"/>
                         <t t-set="lines_list" t-value="[]"/>
                         <t t-set="lines" t-value="loc_move_line[:1]"/>
                         <t t-foreach="loc_move_line[1:]" t-as="l">

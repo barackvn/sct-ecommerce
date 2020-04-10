@@ -17,9 +17,6 @@ class eCommerceShop(models.Model):
     def _create_order_lazada(self, order, detail=False):
         detail = detail or self._py_client_lazada_request('/order/items/get','GET', order_id = order['order_id']).get('data')
         sale_order = super(eCommerceShop, self)._create_order_lazada(order, detail=detail)
-        sale_order.carrier_id = self.env['ecommerce.carrier'].search([
-            ('name','=', detail[0].get('shipment_provider','').split('Delivery: ')[-1])
-            ])[:1].carrier_id
         for line in sale_order.order_line:
             if order.get('warehouse_code') == 'dropshipping':
                 line.route_id = self.env.ref('connector_lazada_stock.stock_location_route_lazada_transit')
@@ -28,16 +25,19 @@ class eCommerceShop(models.Model):
         return sale_order
 
     def _update_order_lazada(self, order, statuses=[], detail=False):
-        detail = detail or self._py_client_lazada_request('/order/items/get','GET', order_id = order['order_id']).get('data')
+        detail = detail or self._py_client_lazada_request('/order/items/get','GET', order_id = order.client_order_ref).get('data')
         order = super(eCommerceShop, self)._update_order_lazada(order, statuses=statuses, detail=detail)
         for status in statuses:
-            if status not in ['unpaid','pending']:
-                picks = order.picking_ids.filtered(lambda r: r.state not in ['done', 'cancel'])
-                picks.write({
-                    'carrier_id': order.carrier_id.id,
-                    'carrier_tracking_ref': detail[0].get('tracking_code','')
-                })
-
+            if status in ['ready_to_ship','shipped']:
+                if not order.carrier_id: 
+                    order.carrier_id = self.env['ecommerce.carrier'].search([
+                        ('name','=', detail[0].get('shipment_provider','').split('Delivery: ')[-1])
+                    ])[:1].carrier_id
+                    picks = order.picking_ids.filtered(lambda r: r.state not in ['done', 'cancel'])
+                    picks.write({
+                        'carrier_id': order.carrier_id.id,
+                        'carrier_tracking_ref': detail[0].get('tracking_code','')
+                    })
             elif status in ['returned', 'failed']: 
                 pick_ids = order.picking_ids.filtered(lambda r: r.picking_type_id in [self.env.ref('connector_lazada_stock.stock_picking_type_lazada_out'), order.warehouse_id.out_type_id])
                 for pick_id in pick_ids: 

@@ -196,14 +196,15 @@ class eCommerceShop(models.Model):
                 'limit': kw.get('limit',100),
                 'sort_by': kw.get('sort_by','updated_at'),
                 'sort_direction': kw.get('sort_direction', 'ASC'),
-                'update_after': kw.get('update_after', shop._last_order_sync and shop._last_order_sync.isoformat() or (datetime.now()-timedelta(days=15)).isoformat())
+                'update_after': kw.get('update_after', shop._last_order_sync and shop._last_order_sync.astimezone().isoformat() or (datetime.now()-timedelta(days=15)).astimezone().isoformat())
             })
             resp = shop._py_client_lazada_request('/orders/get','GET', **kw)
             if not resp.get('data').get('count'):
                 continue
             order_ids = [l_o['order_id'] for l_o in resp.get('data').get('orders')]
             dresp = shop._py_client_lazada_request('/orders/items/get','GET', order_ids = str(order_ids)) 
-            for lazada_order, o_detail in zip(resp.get('data').get('orders'), sorted(dresp.get('data'),key=lambda d: d['order_items'][0]['updated_at'])):
+            for lazada_order, o_detail in zip(sorted(resp.get('data').get('orders'), key= lambda o: o['order_id']), 
+                    sorted(dresp.get('data'),key=lambda d: d['order_id'])):
                 detail = o_detail.get('order_items')
                 order = self.env['sale.order'].search([
                     ('ecommerce_shop_id','=',shop.id),
@@ -211,7 +212,7 @@ class eCommerceShop(models.Model):
                 ])[:1] or shop._create_order_lazada(lazada_order, detail=detail)
                 statuses = lazada_order['statuses']
                 shop._update_order_lazada(order,statuses=statuses, detail=detail)
-                shop._last_order_sync = datetime.strptime(lazada_order['updated_at'],'%Y-%m-%d %H:%M:%S %z').astimezone(pytz.utc).replace(tzinfo=None)
+            shop._last_order_sync = datetime.strptime(resp['data']['orders'][-1]['updated_at'],'%Y-%m-%d %H:%M:%S %z').astimezone(pytz.utc).replace(tzinfo=None)
 
     def _create_order_lazada(self, order, detail=False):
         self.ensure_one()

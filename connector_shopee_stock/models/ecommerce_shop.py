@@ -47,21 +47,55 @@ class eCommerceShop(models.Model):
             for pick_id in pick_ids:
                 if pick_id.state not in ['done','cancel']: pick_id.action_cancel()
                 elif pick_id.state == 'done': 
-                    returns = order.picking_ids.filtered(lambda r: r.location_id == pick_id.location_dest_id and r.location_dest_id == pick_id.location_id and r.state not in ['done','cancel'])
+                    returns = order.picking_ids.filtered(lambda r: r.location_id == pick_id.location_dest_id and r.location_dest_id == pick_id.location_id and r.state != 'cancel')
                     if not returns:
                         wiz_model = self.env['stock.return.picking']
                         wiz = wiz_model.create(wiz_model.with_context(active_id = pick_id.id).default_get(wiz_model._fields.keys()))
                         wiz.product_return_moves.write({'to_refund': True})
                         new_picking_id, pick_type_id = wiz._create_returns()
-                        self.env['stock.picking'].browse(new_picking_id).write({
+                        return_pick = self.env['stock.picking'].browse(new_picking_id)
+                        return_pick.write({
                             'carrier_id': pick_id.carrier_id.id,
                             'carrier_tracking_ref': pick_id.carrier_tracking_ref
+                            })
+                        for moves in zip(pick_id.move_lines, return_pick.move_lines):
+                            l = len(moves[1].move_line_ids)
+                            moves[1].write({
+                                'move_line_ids': [(1, moves[1].move_line_ids[i].id, {
+                                    'lot_id': v.lot_id and v.lot_id.id
+                                }) for i,v in enumerate(moves[0].move_line_ids[:l])] + [(0, _, {
+                                    'product_uom_id': moves[1].product_uom.id,
+                                    'picking_id': moves[1].picking_id.id,
+                                    'move_id': moves[1].id,
+                                    'product_id': moves[1].product_id.id,
+                                    'location_id': moves[1].location_id.id,
+                                    'location_dest_id': moves[1].location_dest_id.id,
+                                    'lot_id': v.lot_id and v.lot_id.id
+                                }) for i,v in enumerate(moves[0].move_line_ids[l:])]
                             })
 
         elif status == 'COMPLETED':
             pick_ids = order.picking_ids.filtered(lambda r: r.state not in ['done', 'cancel'] and r.picking_type_id in [self.env.ref('connector_shopee_stock.stock_picking_type_shopee_out'), self.env.ref('connector_shopee_stock.stock_picking_type_shopee_in')])
             for pick_id in pick_ids:
-                for line in pick_id.move_line_ids: 
+                #if pick_id.picking_type_id == self.env.ref('connector_shopee_stock.stock_picking_type_shopee_in'):
+                #    source_pick = order.picking_ids.filtered(lambda r: r.location_id == pick_id.location_dest_id and r.location_dest_id == pick_id.location_id and r.state != 'cancel')[:1]
+                #    if source_pick:
+                #        for moves in zip(source_pick.move_lines, pick_id.move_lines):
+                #            l = len(moves[1].move_line_ids)
+                #            moves[1].write({
+                #                'move_line_ids': [(1, moves[1].move_line_ids[i].id, {
+                #                    'lot_id': v.lot_id and v.lot_id.id
+                #                }) for i,v in enumerate(moves[0].move_line_ids[:l])] + [(0, _, {
+                #                    'product_uom_id': moves[1].product_uom.id,
+                #                    'picking_id': moves[1].picking_id.id,
+                #                    'move_id': moves[1].id,
+                #                    'product_id': moves[1].product_id.id,
+                #                    'location_id': moves[1].location_id.id,
+                #                    'location_dest_id': moves[1].location_dest_id.id,
+                #                    'lot_id': v.lot_id and v.lot_id.id
+                #                }) for i,v in enumerate(moves[0].move_line_ids[l:])]
+                #            })
+                for line in pick_id.move_line_ids:
                     if line.state not in ['done', 'cancel']: line.qty_done = line.product_uom_qty
                 self.env['stock.immediate.transfer'].create({'pick_ids': [(4, pick_id.id)]}).process()
         return order
