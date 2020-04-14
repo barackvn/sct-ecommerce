@@ -30,7 +30,7 @@
                         <group string="Selling Infomation">
                         </group>
                         <group string="Images">
-                            <field name="ecomm_product_image_ids" class="o_website_sale_image_list" context="{'default_name': name, 'default_res_id': active_id, 'default_res_model': active_model}" nolabel="1">
+                            <field name="ecomm_product_image_ids" class="o_website_sale_image_list" context="{'default_name': name, 'default_res_id': id, 'default_res_model': 'shopee.product.preset'}" nolabel="1">
                                 <kanban string="Product Images" class="o_attachments_previews">
                                     <field name="id"/>
                                     <field name="name"/>

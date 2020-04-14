@@ -174,8 +174,8 @@ class eCommerceProductTemplate(models.Model):
             auto_join=True, domain = [('res_model','=','ecommerce.product.template')])
     auto_update_stock = fields.Boolean()
     has_preset = fields.Boolean(compute='compute_has_preset')
-    #stock = fields.Integer()
-    #price = fiedls.Float()
+    stock = fields.Integer(readonly=True)
+    price = fields.Float()
     _last_info_update = fields.Datetime(string=_("Info Updated On"))
     _last_sync = fields.Datetime(strong=_("Last Sync"))
     #_sync_res = fields.Selection([('fail',_("Fail")),('success',_("Success"))], string=_("Sync Result"))
@@ -383,28 +383,16 @@ class eCommerceProductTemplate(models.Model):
         self.ensure_one()
         getattr(self, '_load_preset_{}'.format(self.platform_id.platform))()
 
-    def write(self, values):
-        if len(self) == 1:
-            for i in values.get('ecomm_product_image_ids',[]):
-                if i[0] == 0: i[2].update({'res_id': self.id, 'res_model': self._name})
-        super(eCommerceProductTemplate, self).write(values)
 
-    @api.model
-    def create(self, values):
-        image_values = [t[2] for t in values.pop('ecomm_product_image_ids') if t[0]==0]
-        product = super(eCommerceProductTemplate, self).create(values)
-        for val in image_values: val.update({'res_id': product.id, 'res_model': product._name}) 
-        self.env['ecommerce.product.image'].create(image_values)
-        return product
 
     def calculate_stock(self, default=1000):
-        self.ensure_one()
-        if not self.product_tmpl_id or not self.product_product_id:
-            return 0
-        if (self.product_product_id.type == 'product' or self.product_product_id.pack_ok == True and 'product' in self.product_product_id.mapped('pack_line_ids.product_id.type')) and self.product_product_id.inventory_availability not in [False, 'never']:
-            return self.product_product_id.virtual_available > 0 and self.product_product_id.virtual_available or 0
-        else:
-            return default
+        for p in self:
+            if not p.product_tmpl_id or not p.product_product_id:
+                continue
+            elif (p.product_product_id.type == 'product' or p.product_product_id.pack_ok == True and 'product' in p.product_product_id.mapped('pack_line_ids.product_id.type')) and p.product_product_id.inventory_availability not in [False, 'never']:
+                p.stock = self.product_product_id.virtual_available > 0 and self.product_product_id.virtual_available or 0
+            else:
+                p.stock = default
 
 class eCommerceProductProduct(models.Model):
     _name = 'ecommerce.product.product'
@@ -415,21 +403,21 @@ class eCommerceProductProduct(models.Model):
     product_product_id = fields.Many2one('product.product')
     ecomm_product_tmpl_id = fields.Many2one('ecommerce.product.template', ondelete='cascade', required=True)
     sku = fields.Char()
-    #price = fields.Float()
-    #stock = fields.Integer()
+    price = fields.Float()
+    stock = fields.Integer(readonly=True)
 
     @api.onchange('product_product_id')
     def onchange_product_product_id(self):
         if not self.platform_variant_idn: self.sku = self.product_product_id.default_code
 
     def calculate_stock(self, default=1000):
-        self.ensure_one()
-        if not self.product_tmpl_id or not self.product_product_id:
-            return 0
-        if (self.product_product_id.type == 'product' or self.product_product_id.pack_ok == True and 'product' in self.product_product_id.mapped('pack_line_ids.product_id.type')) and self.product_product_id.inventory_availability not in [False, 'never']:
-            return self.product_product_id.virtual_available > 0 and self.product_product_id.virtual_available or 0
-        else: 
-            return default
+        for v in self:
+            if not v.product_product_id:
+                continue
+            elif (v.product_product_id.type == 'product' or v.product_product_id.pack_ok == True and 'product' in v.product_product_id.mapped('pack_line_ids.product_id.type')) and v.product_product_id.inventory_availability not in [False, 'never']:
+                v.stock = v.product_product_id.virtual_available > 0 and v.product_product_id.virtual_available or 0
+            else: 
+                v.stock = default
 
 
 class eCommerceProductImage(models.Model):

@@ -80,9 +80,10 @@ class ShopeeProductTemplate(models.Model):
         shop_id = self.mapped('shop_id')
         shop_id.ensure_one()
         limit = self[:50]
+        limit.calculate_stock()
         items = [{
             'item_id': int(t.platform_item_idn),
-            'stock': int(t.product_product_id.virtual_available > 0 and t.product_product_id.virtual_available or 0) if ((t.product_tmpl_id.type == 'product' or (t.product_product_id.pack_ok == True and 'product' in t.product_product_id.mapped('pack_line_ids.product_id.type'))) and t.product_tmpl_id.inventory_availability not in [False, 'never']) else 1000,
+            'stock': t.stock,
         } for t in limit]
         shop_id._py_client_shopee().item.update_stock_batch(items = items)
         if len(self) > 50: (self-limit)._update_item_stock_shopee()
@@ -90,18 +91,20 @@ class ShopeeProductTemplate(models.Model):
     def _add_to_shop_shopee(self, data=None):
         self.ensure_one()
         preset = self.product_tmpl_id.mapped('{}_product_preset_id'.format(self.platform_id.platform))
+        self.calculate_stock()
+        self.ecomm_product_product_ids.calculate_stock()
         data = data or {}
         data.update({
             'category_id': preset.ecomm_categ_id.platform_categ_idn,
             'name': self.name,
             'description': self.description,
-            'price': self.product_product_id and self.product_product_id.lst_price > 1000 and self.product_product_id.lst_price or 1000,
-            'stock': self.product_product_id and (int(self.product_product_id.virtual_available > 0 and self.product_product_id.virtual_available or 0) if ((self.product_tmpl_id.type == 'product' or (self.product_product_id.pack_ok == True and 'product' in self.product_product_id.mapped('pack_line_ids.product_id.type'))) and self.product_tmpl_id.inventory_availability not in [False, 'never']) else 1000) or False,
+            'price': self.price,
+            'stock': self.stock,
             'item_sku': self.product_tmpl_id.default_code,
             'variations': [{
                 'name': v.name or 'Default',
-                'stock': int(v.product_product_id.virtual_available > 0 and v.product_product_id.virtual_available or 0) if ((v.product_product_id.product_tmpl_id.type == 'product' or (v.product_product_id.pack_ok == True and 'product' in v.product_product_id.mapped('pack_line_ids.product_id.type'))) and v.product_product_id.product_tmpl_id.inventory_availability not in [False, 'never']) else 1000,
-                'price': v.product_product_id.lst_price > 1000 and v.product_product_id.lst_price or 1000,
+                'stock': v.stock,
+                'price': v.price,
                 'variation_sku': v.sku,
             } for v in self.ecomm_product_product_ids],
             'images': [{'url': url} for url in self._upload_image_shopee(self.mapped('ecomm_product_image_ids.image_url'))],
@@ -155,7 +158,8 @@ class ShopeeProductTemplate(models.Model):
 
     def _update_info_shopee(self, data={}):
         self.ensure_one()
-        
+        self.calculate_stock()
+        self.ecomm_product_product_ids.calculate_stock()
         new_v = self.ecomm_product_product_ids.filtered(lambda r: not r.platform_variant_idn and r.product_product_id)
         o = len(self.ecomm_product_product_ids - new_v)
         if new_v:
@@ -165,8 +169,8 @@ class ShopeeProductTemplate(models.Model):
             }]
             add_variant_data = [{
                 'tier_index': [o+i],
-                'stock': int(v.product_product_id.virtual_available > 0 and v.product_product_id.virtual_available or 0) if ((v.product_product_id.product_tmpl_id.type == 'product' or (v.product_product_id.pack_ok == True and 'product' in v.product_product_id.mapped('pack_line_ids.product_id.type'))) and v.product_product_id.product_tmpl_id.inventory_availability not in [False, 'never']) else 1000,
-                'price': v.product_product_id.lst_price > 1000 and v.product_product_id.lst_price or 1000,
+                'stock': v.stock,
+                'price': v.price,
                 'variation_sku': v.sku,
             } for i, v in enumerate(new_v)]
             if o == 0:
@@ -185,6 +189,7 @@ class ShopeeProductTemplate(models.Model):
             'name': self.name,
             'description': self.description,
             'item_sku': self.sku or ' ',
+            'price': self.price,
             'variations': [{
                 'variation_id': int(v.platform_variant_idn),
                 'name': v.name,
@@ -201,7 +206,7 @@ class ShopeeProductTemplate(models.Model):
         if self.product_product_id:
             self.update({
                 'product_tmpl_id': self.product_product_id.product_tmpl_id,
-                'ecomm_product_product_ids': [(3, e.id, _) for e in self._origin.ecomm_product_product_ids]+ [(0, _, {
+                'ecomm_product_product_ids': [(5, _, _)]+ [(0, _, {
                     'name': ', '.join(self.product_product_id.mapped('attribute_value_ids.name')),
                     'product_product_id': self.product_product_id.id,
                     'sku': self.product_product_id.default_code
@@ -210,14 +215,14 @@ class ShopeeProductTemplate(models.Model):
 
         elif self.product_tmpl_id:
             self.update({
-                'ecomm_product_product_ids': [(3, e.id, _) for e in self._origin.ecomm_product_product_ids]+ [(0, _, {
+                'ecomm_product_product_ids': [(5, _, _)]+ [(0, _, {
                     'name': ', '.join(p.mapped('attribute_value_ids.name')),
                     'product_product_id': p.id,
                     'sku': p.default_code,
                 }) for p in self.product_tmpl_id.product_variant_ids]
             })
         else: 
-            self.update({'ecomm_product_product_ids': [(3, e.id, _) for e in self._origin.ecomm_product_product_ids]})
+            self.update({'ecomm_product_product_ids': [(5, _, _)]})
             
     def _onchange_shop_id_shopee(self):
         if self.platform_item_idn: return
@@ -248,10 +253,11 @@ class ShopeeProductProduct(models.Model):
         shop_id = self.mapped('ecomm_product_tmpl_id.shop_id')
         shop_id.ensure_one()
         limit = self[:50]
+        limit.calculate_stock()
         variations = [{
             'item_id': int(v.ecomm_product_tmpl_id.platform_item_idn),
             'variation_id': int(v.platform_variant_idn),
-            'stock': int(v.product_product_id.virtual_available > 0 and v.product_product_id.virtual_available or 0) if ((v.product_product_id.product_tmpl_id.type == 'product' or (v.product_product_id.pack_ok == True and 'product' in v.product_product_id.mapped('pack_line_ids.product_id.type'))) and v.product_product_id.product_tmpl_id.inventory_availability not in [False, 'never']) else 1000,
+            'stock': v.stock,
         } for v in limit]
         _logger.info(variations)
         shop_id._py_client_shopee().item.update_variation_stock_batch(variations = variations)

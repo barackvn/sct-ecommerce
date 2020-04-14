@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from odoo import api, fields, models
+from odoo import api, fields, models, exceptions
 from datetime import datetime, timedelta
 import logging
 _logger= logging.getLogger(__name__)
@@ -109,7 +109,11 @@ class eCommerceShop(models.Model):
             ('confirmation_date','>',(datetime.now()-timedelta(days=15)).strftime("%Y-%m-%d %H:%M:%S"))
             ], limit=100)
         for order in orders:
-            logistic = order.ecommerce_shop_id._py_client_shopee().logistic.get_order_logistic(ordersn=order.client_order_ref).get('logistics')
+            logistic = False
+            try:
+                logistic = order.ecommerce_shop_id._py_client_shopee().logistic.get_order_logistic(ordersn=order.client_order_ref).get('logistics')
+            except exceptions.UserError:
+                pass
             if logistic:
                 vals = {
                     'carrier_tracking_ref': logistic['tracking_no'],

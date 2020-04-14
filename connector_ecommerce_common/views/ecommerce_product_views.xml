@@ -24,13 +24,15 @@
                             <field name="product_product_id"/>
                             <field name="sku"/>
                             <field name="auto_update_stock" widget="boolean_toggle"/>
+                            <field name="price"/>
+                            <field name="stock"/>
                         </group>
                         <group col="2">
                             <field name="name"/>
                             <field name="description"/>
                         </group>
                         <group name="images" string="Images">
-                            <field name="ecomm_product_image_ids" class="o_website_sale_image_list" context="{'default_name': name, 'default_res_id': active_id, 'default_res_model': active_model}" nolabel="1">
+                            <field name="ecomm_product_image_ids" class="o_website_sale_image_list" context="{'default_name': name, 'default_res_id': id, 'default_res_model': 'ecommerce.product.template'}" nolabel="1">
                                 <kanban string="Product Images" class="o_attachments_previews">
                                     <field name="id"/>
                                     <field name="name"/>
@@ -58,8 +60,10 @@
                                 <field name="ecomm_product_product_ids" nolabel="1">
                                     <tree editable='bottom'>
                                         <field name="name"/>
-                                        <field name="platform_variant_idn"/>
+                                        <!--field name="platform_variant_idn"/-->
                                         <field name="sku"/>
+                                        <field name="price"/>
+                                        <field name="stock"/>
                                         <field name="product_product_id" domain="[('product_tmpl_id','=', parent.product_tmpl_id)]"/>
                                     </tree>
                                 </field>
@@ -110,6 +114,9 @@
                                 <field name="image_url" attrs="{'readonly': [('image','!=',False)]}"/>
                                 <separator/>
                                 <button name="refresh" type="object" string="Refresh" class="btn-info"/>
+                                <group>
+                                    <field name="sequence"/>
+                                </group>
                                 <field name="res_id" invisible="1"/>
                                 <field name="res_model" invisible="1"/>
                             </div>
