@@ -45,14 +45,20 @@ class eCommerceShop(models.Model):
     def sync_product(self, **kw):
         for shop in self:
             getattr(shop, "_sync_product_{}".format(shop.platform_id.platform))(**kw)
-    
+
+    def vacuum_product(self):
+        for shop in self:
+            getattr(shop, "_vacuum_product_{}".format(shop.platform_id.platform))()
+
     def match_sku(self):
         for shop in self:
             shop.ecomm_product_tmpl_ids.match_sku()  
 
     @api.model
     def cron_sync_product(self):
-        self.env['ecommerce.shop'].search([('auto_sync','=',True)]).sync_product()
+        shops = self.env['ecommerce.shop'].search([('auto_sync','=',True)])
+        shops.vacuum_product()
+        shops.sync_product()
 
 class SaleOrder(models.Model):
     _inherit = 'sale.order'

@@ -42,11 +42,11 @@ class eCommerceShop(models.Model):
                     if line.state not in ['done', 'cancel']: line.qty_done = line.product_uom_qty
                 self.env['stock.immediate.transfer'].create({'pick_ids': [(4, pick_id.id)]}).process()
 
-        elif status in ['TO_RETURN','CANCELLED'] : 
-            pick_ids = order.picking_ids.filtered(lambda r: r.picking_type_id in [self.env.ref('connector_shopee_stock.stock_picking_type_shopee_out'), order.warehouse_id.out_type_id])
+        elif status in ['TO_RETURN','CANCELLED']:
+            pick_ids = order.picking_ids.filtered(lambda r: r.picking_type_id == self.env.ref('connector_shopee_stock.stock_picking_type_shopee_out')) + order.picking_ids.filtered(lambda r: r.picking_type_id == order.warehouse_id.out_type_id)
             for pick_id in pick_ids:
                 if pick_id.state not in ['done','cancel']: pick_id.action_cancel()
-                elif pick_id.state == 'done': 
+                elif pick_id.state == 'done':
                     returns = order.picking_ids.filtered(lambda r: r.location_id == pick_id.location_dest_id and r.location_dest_id == pick_id.location_id and r.state != 'cancel')
                     if not returns:
                         wiz_model = self.env['stock.return.picking']
@@ -57,7 +57,7 @@ class eCommerceShop(models.Model):
                         return_pick.write({
                             'carrier_id': pick_id.carrier_id.id,
                             'carrier_tracking_ref': pick_id.carrier_tracking_ref
-                            })
+                        })
                         for moves in zip(pick_id.move_lines, return_pick.move_lines):
                             l = len(moves[1].move_line_ids)
                             moves[1].write({

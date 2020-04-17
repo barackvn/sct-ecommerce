@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<odoo>
+    <data noupdate="1">
+        <record id="action_make_preset" model="ir.actions.server">
+            <field name="name">Make Preset</field>
+            <field name="model_id" ref="model_ecommerce_product_template"/>
+            <field name="binding_model_id" ref="model_ecommerce_product_template"/>
+            <field name="state">code</field>
+            <field name="code">records.make_preset()</field>
+        </record>
+    </data>
+    <data noupdate="1">
+        <record id="action_match_sku" model="ir.actions.server">
+            <field name="name">Match SKU</field>
+            <field name="model_id" ref="model_ecommerce_product_template"/>
+            <field name="binding_model_id" ref="model_ecommerce_product_template"/>
+            <field name="state">code</field>
+            <field name="code">records.match_sku()</field>
+        </record>
+    </data>
+</odoo>

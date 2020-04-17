@@ -76,6 +76,18 @@ class eCommerceShop(models.Model):
         for categ in categs:
             _create_categ(categ, False, 0)
 
+    def _vacuum_product_lazada(self):
+        self.ensure_one()
+        offset, limit = 0,100
+        id_list = []
+        while True:
+            data = self._py_client_lazada_request('/products/get','GET', filter='all', offset=offset, limit=limit).get('data',{})
+            id_list += [i['item_id'] for i in data.get('products',[])]
+            if data.get('total_products') <= offset+limit: break
+            offset += limit
+        _logger.info(self.env['ecommerce.product.template'].search([('platform_item_idn','not in',id_list)]))
+        #self.env['ecommerce.product.template'].search([('platform_item_idn','not in',id_list)]).unlink()
+
     def _sync_product_lazada(self, **kw):
         self.ensure_one()
         model = self.env['ecommerce.product.template']
@@ -266,11 +278,14 @@ class eCommerceShop(models.Model):
     def _update_order_lazada(self, order, statuses=[], detail=False):
         for status in statuses:
             if status == 'ready_to_ship':
-                if order.state == 'draft': order.action_confirm()
+                if order.state in ['draft', 'sent']: order.action_confirm()
             elif status == 'canceled':
-                order.action_cancel()
+                try: 
+                    order.action_cancel()
+                except:
+                    pass
             elif status == 'delivered':
-                if order.state == 'draft':
+                if order.state in ['draft', 'sent']:
                     order.action_confirm()
                     order.action_done()
                 elif order.state == 'sale': 

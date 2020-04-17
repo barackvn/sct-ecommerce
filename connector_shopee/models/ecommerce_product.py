@@ -1,7 +1,6 @@
 #-*- coding: utf-8 -*-
 
-from odoo import models, fields, api, _
-
+from odoo import models, fields, api, _, exceptions
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -202,27 +201,29 @@ class ShopeeProductTemplate(models.Model):
             self._last_info_update = fields.Datetime.now()
 
     def _onchange_product_id_shopee(self):
-        if self.platform_item_idn: return
-        if self.product_product_id:
+        if self.platform_item_idn or self.product_product_id and self.product_tmpl_id == self.product_product_id.product_tmpl_id: return
+        if self.product_tmpl_id.id != self.t_product_tmpl_id:
             self.update({
-                'product_tmpl_id': self.product_product_id.product_tmpl_id,
-                'ecomm_product_product_ids': [(5, _, _)]+ [(0, _, {
-                    'name': ', '.join(self.product_product_id.mapped('attribute_value_ids.name')),
-                    'product_product_id': self.product_product_id.id,
-                    'sku': self.product_product_id.default_code
-                })]
-            })
-
-        elif self.product_tmpl_id:
-            self.update({
+                'product_product_id': False,
+                't_product_tmpl_id': self.product_tmpl_id.id,
                 'ecomm_product_product_ids': [(5, _, _)]+ [(0, _, {
                     'name': ', '.join(p.mapped('attribute_value_ids.name')),
                     'product_product_id': p.id,
                     'sku': p.default_code,
-                }) for p in self.product_tmpl_id.product_variant_ids]
+                    'price': p.lst_price,
+                }) for p in self.product_tmpl_id.mapped('product_variant_ids')]
             })
-        else: 
-            self.update({'ecomm_product_product_ids': [(5, _, _)]})
+        elif self.product_product_id:
+            self.update({
+                'product_tmpl_id': self.product_product_id.product_tmpl_id.id,
+                't_product_tmpl_id': self.product_product_id.product_tmpl_id.id,
+                'ecomm_product_product_ids': [(5, _, _)]
+            })
+        elif not self.ecomm_product_product_ids and self.product_tmpl_id:
+            self.update({
+                'product_product_id': self.product_tmpl_id.product_variant_ids[0].id
+            })
+        #    self.update({'ecomm_product_product_ids': [(5, _, _)]})
             
     def _onchange_shop_id_shopee(self):
         if self.platform_item_idn: return
@@ -245,6 +246,62 @@ class ShopeeProductTemplate(models.Model):
                 'res_model': 'ecommerce.product.template'
             }) for i in preset.ecomm_product_image_ids],
         })
+
+    def _make_preset_shopee(self, context=None, data=None):
+        self.ensure_one()
+        if not self.product_tmpl_id:
+            raise exceptions.UserError('Can not set preset for unmatched product')
+        preset_id = self.product_tmpl_id.shopee_product_preset_id or self.env['shopee.product.preset'].create({
+            'platform_id': self.platform_id.id,
+            'ecomm_categ_selector_id': self.env['ecommerce.category.selector'].create({
+                'platform_id': self.platform_id.id,
+            }).id,
+            'product_tmpl_ids': [(4, self.product_tmpl_id.id, _)],
+        })
+        if data: 
+            val = data
+        elif self.platform_item_idn:
+            data = self.shop_id._py_client_shopee().item.get_item_detail(item_id=int(self.platform_item_idn)).get('item')
+            val = {k: data.get(k) for k in ['name', 'description', 'weight', 'package_length', 'package_width', 'package_height', 'condition', 'is_pre_order', 'days_to_ship']}
+            #size_chart
+            attrs = self.shop_id._py_client_shopee().item.get_attributes(category_id=data.get('category_id')).get('attributes')
+            for i, attr in enumerate(attrs):
+                attr['attribute_value'] = data.get('attributes')[i]['attribute_value']
+                attr['attr_id'] = self.env['ecommerce.attribute'].search([
+                    ('platform_id', '=', self.platform_id.id),
+                    ('platform_attr_idn', '=', attr['attribute_id'])
+                ])[:1].id or self.env['ecommerce.attribute'].create({
+                    'name': attr['attribute_name'],
+                    'platform_id': self.platform_id.id,
+                    'platform_attr_idn': attr['attribute_id'],
+                    'mandatory': attr['is_mandatory'],
+                    'attr_type': attr['attribute_type'],
+                    'input_type': attr['input_type'],
+                    'value_ids': [(0,_,{
+                        'name': option,
+                    }) for option in attr['options']],
+                }).id
+            val.update({
+                'platform_id': self.platform_id.id,
+                'ecomm_categ_id': self.env['ecommerce.category'].search([('platform_id','=',self.platform_id.id),('platform_categ_idn','=', data.get('category_id'))])[:1].id,
+                'ecomm_attribute_lines': [(0, _, {
+                    'attr_id': attr['attr_id'],
+                    'res_id': preset_id.id,
+                    'res_model': preset_id._name,
+                    'value_id': self.env['ecommerce.attribute.value'].search([('attr_id','=',attr['attr_id']),('name','=',attr['attribute_value'])])[:1].id,
+                }) for attr in attrs],
+                'ecomm_product_image_ids': [(0, _, {
+                    'sequence': i.sequence,
+                    'name': i.name,
+                    'image_url': i.image_url,
+                    'res_id': preset_id.id,
+                    'res_model': preset_id._name,
+                }) for i in self.ecomm_product_image_ids]
+            })
+        else:
+            raise exceptions.UserError('No data to set')
+        preset_id.ecomm_categ_selector_id.write({'ecomm_categ_id': val['ecomm_categ_id']})
+        preset_id.write(val)
 
 class ShopeeProductProduct(models.Model):
     _inherit = 'ecommerce.product.product'

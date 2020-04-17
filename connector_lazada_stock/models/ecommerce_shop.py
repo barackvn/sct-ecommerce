@@ -38,9 +38,9 @@ class eCommerceShop(models.Model):
                         'carrier_id': order.carrier_id.id,
                         'carrier_tracking_ref': detail[0].get('tracking_code','')
                     })
-            elif status in ['returned', 'failed']: 
-                pick_ids = order.picking_ids.filtered(lambda r: r.picking_type_id in [self.env.ref('connector_lazada_stock.stock_picking_type_lazada_out'), order.warehouse_id.out_type_id])
-                for pick_id in pick_ids: 
+            elif status in ['returned', 'failed', 'cancel']: 
+                pick_ids = order.picking_ids.filtered(lambda r: r.picking_type_id == self.env.ref('connector_lazada_stock.stock_picking_type_lazada_out')) + order.picking_ids.filtered(lambda r: r.picking_type_id == order.warehouse_id.out_type_id)
+                for pick_id in pick_ids:
                     if pick_id.state not in ['done','cancel']: pick_id.action_cancel()
                     elif pick_id.state == 'done':
                         returns = order.picking_ids.filtered(lambda r: r.location_id == pick_id.location_dest_id and r.location_dest_id == pick_id.location_id and r.state != 'cancel')

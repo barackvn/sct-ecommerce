@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<odoo>
+    <data>
+        <record id="stock_warehouse_tiki" model="stock.warehouse">
+            <field name="name">Tiki Warehouse</field>
+            <field name="code">TW</field>
+        </record>
+
+        <function model="ir.model.data" name="_update_xmlids">
+            <value model="base" eval="[{
+                'xml_id': 'connector_tiki_stock.stock_location_tiki_view',
+                'record': obj().env.ref('connector_tiki_stock.stock_warehouse_tiki').view_location_id,
+                'noupdate': True,
+            }, {
+                'xml_id': 'connector_tiki_stock.stock_location_tiki_stock',
+                'record': obj().env.ref('connector_tiki_stock.stock_warehouse_tiki').lot_stock_id,
+                'noupdate': True,
+            }, {
+                'xml_id': 'connector_tiki_stock.stock_picking_type_tiki_in',
+                'record': obj().env.ref('connector_tiki_stock.stock_warehouse_tiki').in_type_id,
+                'noupdate': True,
+            }, {
+                'xml_id': 'connector_tiki_stock.stock_picking_type_tiki_out',
+                'record': obj().env.ref('connector_tiki_stock.stock_warehouse_tiki').out_type_id,
+                'noupdate': True,
+            }]"/>
+        </function>
+
+        <record id="stock_location_tiki_transit" model='stock.location'>
+            <field name="name">Transit</field>
+            <field name="location_id" ref="stock_location_tiki_view"/>
+            <field name="usage">transit</field>
+            <field name="barcode">TW-SHIP</field>
+        </record>
+        <record id="stock_location_route_tiki_fbt" model='stock.location.route'>
+            <field name="name">Tiki Fulfillment Route</field>
+            <field name="company_id"></field>
+            <field name="sequence">10</field>
+            <field name="sale_selectable" eval="True"/>
+        </record>
+        <record id="stock_rule_tiki_fbt" model='stock.rule'>
+            <field name="name">Tiki → Customer</field>
+            <field name="action">pull</field>
+            <field name="picking_type_id" ref="connector_tiki_stock.stock_picking_type_tiki_out"/>
+            <field name="location_src_id" ref="connector_tiki_stock.stock_location_tiki_stock"/>
+            <field name="location_id" ref="stock.stock_location_customers"/>
+            <field name="procure_method">make_to_stock</field>
+            <field name="route_id" ref="stock_location_route_tiki_fbt"/>
+            <field name="sequence">20</field>
+        </record>
+        <record id="stock_location_route_tiki_transit" model='stock.location.route'>
+            <field name="name">Tiki Normal Route</field>
+            <field name="company_id"></field>
+            <field name="sequence">10</field>
+            <field name="sale_selectable" eval="True"/>
+        </record>
+        <record id="stock_rule_tiki_transit1" model='stock.rule'>
+            <field name="name">WH → Tiki</field>
+            <field name="action">pull</field>
+            <field name="picking_type_id" ref="stock.picking_type_out"/>
+            <field name="location_src_id" ref="stock.stock_location_stock"/>
+            <field name="location_id" ref="connector_tiki_stock.stock_location_tiki_transit"/>
+            <field name="procure_method">make_to_stock</field>
+            <field name="route_id" ref="stock_location_route_tiki_transit"/>
+            <field name="sequence">20</field>
+        </record>
+
+        <record id="stock_rule_tiki_transit2" model='stock.rule'>
+            <field name="name">Tiki → Customer</field>
+            <field name="action">pull</field>
+            <field name="picking_type_id" ref="connector_tiki_stock.stock_picking_type_tiki_out"/>
+            <field name="location_src_id" ref="connector_tiki_stock.stock_location_tiki_transit"/>
+            <field name="location_id" ref="stock.stock_location_customers"/>
+            <field name="procure_method">make_to_order</field>
+            <field name="route_id" ref="stock_location_route_tiki_transit"/>
+            <field name="sequence">20</field>
+        </record>
+    </data>
+</odoo>

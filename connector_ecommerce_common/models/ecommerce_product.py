@@ -179,6 +179,7 @@ class eCommerceProductTemplate(models.Model):
     _last_info_update = fields.Datetime(string=_("Info Updated On"))
     _last_sync = fields.Datetime(strong=_("Last Sync"))
     #_sync_res = fields.Selection([('fail',_("Fail")),('success',_("Success"))], string=_("Sync Result"))
+    t_product_tmpl_id = fields.Integer()
 
     model_object_field = fields.Many2one('ir.model.fields', string="Field")
     sub_object = fields.Many2one('ir.model', 'Sub-model', readonly=True,
@@ -343,8 +344,10 @@ class eCommerceProductTemplate(models.Model):
                     'product_product_id': False,
                     'ecomm_product_product_ids': [(1, p.id, {'product_product_id': False}) for p in item.ecomm_product_product_ids]
                 })
+            if item.platform_item_idn and item.product_tmpl_id and not item.product_tmpl_id['{}_product_preset_id'.format(item.platform_id.platform)]:
+                item.make_preset()
 
-    @api.onchange('product_tmpl_id', 'product_product_id')
+    @api.onchange('product_tmpl_id', 'product_product_id', 'ecomm_product_product_ids')
     def onchange_product_id(self):
         if self.platform_id:
             getattr(self, '_onchange_product_id_{}'.format(self.platform_id.platform))()
@@ -383,14 +386,17 @@ class eCommerceProductTemplate(models.Model):
         self.ensure_one()
         getattr(self, '_load_preset_{}'.format(self.platform_id.platform))()
 
-
+    def make_preset(self):
+        for p in self:
+            if p.platform_id: 
+                getattr(p,'_make_preset_{}'.format(p.platform_id.platform))()
 
     def calculate_stock(self, default=1000):
         for p in self:
             if not p.product_tmpl_id or not p.product_product_id:
                 continue
             elif (p.product_product_id.type == 'product' or p.product_product_id.pack_ok == True and 'product' in p.product_product_id.mapped('pack_line_ids.product_id.type')) and p.product_product_id.inventory_availability not in [False, 'never']:
-                p.stock = self.product_product_id.virtual_available > 0 and self.product_product_id.virtual_available or 0
+                p.stock = p.product_product_id.virtual_available > 0 and p.product_product_id.virtual_available or 0
             else:
                 p.stock = default
 

@@ -91,6 +91,19 @@ class eCommercerShop(models.Model):
                 ('platform_id','=',platform_id),
                 ('platform_categ_idn','=',categ.platform_parent_categ_idn)])[:1]
 
+    def _vacuum_product_shopee(self):
+        self.ensure_one()
+        offset, limit = 0,100
+        id_list = []
+        while True:
+            resp = self._py_client_shopee().item.get_item_list(pagination_offset=offset,pagination_entries_per_page=limit)
+            id_list += [i['item_id'] for i in resp.get('items',[])]
+            if not resp.get('more'): break
+            offset += limit
+        _logger.info(self.env['ecommerce.product.template'].search([('platform_item_idn','not in',id_list)]))
+        #self.env['ecommerce.product.template'].search([('platform_item_idn','not in',id_list)]).unlink()
+
+
     def _sync_product_shopee(self, **kw):
         self.ensure_one()
         model = self.env['ecommerce.product.template']

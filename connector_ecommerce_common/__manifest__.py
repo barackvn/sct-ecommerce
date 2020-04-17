@@ -32,6 +32,7 @@
         'views/ecommerce_category_selector_views.xml',
         'wizard/ecommerce_product_preview_views.xml',
         'data/cron.xml',
+        'data/ecommerce_product_data.xml',
     ],
     # only loaded in demonstration mode
     'demo': [
