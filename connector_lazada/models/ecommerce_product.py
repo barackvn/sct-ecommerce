@@ -67,6 +67,9 @@ class LazadaProductTemplate(models.Model):
                 }) for p in pairs]
             })
 
+    def _make_preset_lazada(self):
+        pass
+
     def _update_info_lazada(self,data={}):
         self.ensure_one()
         data.update({

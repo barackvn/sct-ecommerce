@@ -54,6 +54,10 @@ class eCommerceShop(models.Model):
         for shop in self:
             shop.ecomm_product_tmpl_ids.match_sku()  
 
+    def get_categories(self):
+        for shop in self:
+            getattr(shop, "_get_categories_{}".format(shop.platform_id.platform))()
+
     @api.model
     def cron_sync_product(self):
         shops = self.env['ecommerce.shop'].search([('auto_sync','=',True)])

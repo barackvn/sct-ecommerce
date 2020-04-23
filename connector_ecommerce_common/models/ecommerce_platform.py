@@ -10,4 +10,7 @@ class eCommercePlatform(models.Model):
     partner_id = fields.Integer()
     key = fields.Char()
 
-
+    @api.model
+    def cron_sync_categories(self):
+        for platform in self.env['ecommerce.platform'].search([]):
+            self.env['ecommerce.shop'].search([('platform_id','=',platform.id),('state','=','auth')])[:1].get_categories()

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="purchase_order_form_view_inherit" model="ir.ui.view">
+        <field name="name">purchase.order.form.inherit.purchase.expense</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+            <data>
+               <xpath expr="//button[@name='action_view_invoice']" position="before">
+                   <button type="action"
+                       name="%(stock_landed_costs_extend.hr_expense_action_from_purchase_order)d"
+                       class="oe_stat_button"
+                       icon="fa-money"
+                       attrs="{'invisible': [('expense_count', '=', 0)]}">
+                       <field name="expense_count" widget="statinfo" string="Expenses"/>
+                   </button>
+               </xpath>
+               <xpath expr="//field[@name='origin']" position="after">
+                   <field name="landed_cost_id" attrs="{'readonly': True,'invisible': [('landed_cost_id','=',False)]}"/>
+               </xpath>
+            </data>
+        </field>
+    </record>
+
+</odoo>

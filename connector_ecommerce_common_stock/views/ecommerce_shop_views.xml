@@ -8,7 +8,7 @@
             <field name="arch" type="xml">
                 <xpath expr="//notebook" position="inside">
                     <page string="Logistics" name="logistic">
-                        <button name="get_logistic" string="Get Logistic" type="object" attrs="{'invisible': [('carrier_ids','!=',[])]}"/>
+                        <button name="get_logistic" string="Get Logistic" type="object"/>
                         <field name="carrier_ids" nolabel="1" mode="tree">
                             <tree create="0" delete="0">
                                 <field name="ecomm_carrier_id"/>

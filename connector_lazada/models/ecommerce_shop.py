@@ -63,13 +63,16 @@ class eCommerceShop(models.Model):
         self.ensure_one()
         categs = self._py_client_lazada_request('/category/tree/get','GET').get('data')
         def _create_categ(categ, parent_id, parent_idn):
-            categ_id = self.env['ecommerce.category'].create({
+            categ_id = self.env['ecommerce.category'].search([
+                ('platform_id','=', self.platform_id.id),
+                ('platform_categ_idn','=',categ['category_id'])]
+            )[:1].id or self.env['ecommerce.category'].create({
                 'platform_id': self.platform_id.id,
                 'parent_id': parent_id,
                 'platform_categ_idn': categ['category_id'],
                 'platform_parent_categ_idn': parent_idn,
                 'name': categ['name'],
-                }).id
+            }).id
             if categ.get('children'):
                 for child in categ.get('children'):
                     _create_categ(child, categ_id, categ['category_id'])
@@ -85,8 +88,7 @@ class eCommerceShop(models.Model):
             id_list += [i['item_id'] for i in data.get('products',[])]
             if data.get('total_products') <= offset+limit: break
             offset += limit
-        _logger.info(self.env['ecommerce.product.template'].search([('platform_item_idn','not in',id_list)]))
-        #self.env['ecommerce.product.template'].search([('platform_item_idn','not in',id_list)]).unlink()
+        self.env['ecommerce.product.template'].search([('shop_id','=',self.id),('platform_item_idn','not in',id_list)]).unlink()
 
     def _sync_product_lazada(self, **kw):
         self.ensure_one()
@@ -95,9 +97,9 @@ class eCommerceShop(models.Model):
         kw.setdefault('limit', 100)
         if self._last_product_sync:
             kw.setdefault('update_before', datetime.now().replace(microsecond=0).isoformat())
-            kw.setdefault('update_after', self._last_product_sync and self._last_product_sync.isoformat() or (datetime.now()-timedelta(days=15)).replace(microsecond=0).isoformat())
+            kw.setdefault('update_after', self._last_product_sync and self._last_product_sync.replace(microsecond=0).isoformat() or (datetime.now()-timedelta(days=15)).replace(microsecond=0).isoformat())
         data = self._py_client_lazada_request('/products/get','GET', filter='all', **kw).get('data',{})
-        for product in data.get('products'):
+        for product in data.get('products',[]):
             tmpl = model.search([
                 ('shop_id', '=', self.id),
                 ('platform_item_idn', '=', str(product.get('item_id')))
@@ -146,11 +148,11 @@ class eCommerceShop(models.Model):
                         'sku': u['SellerSku']
                     }) for u in product['skus']],
                 })
-        if data['total_products'] > kw['offset']+kw['limit']:
+        if data.get('total_products',0) > kw['offset']+kw['limit']:
             kw['offset']+=kw['limit']
             self._sync_product_lazada(**kw)
         else:
-            self._last_sku_sync = datetime.now()
+            self._last_product_sync = datetime.now()
 
 
 

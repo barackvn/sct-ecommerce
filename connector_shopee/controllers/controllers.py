@@ -18,25 +18,36 @@ class ShopeeController(eCommerceController):
         #_logger.info(cal_auth)
         #if cal_auth == authorization:
         if True:
-            if json_data.get('code',0) == 1:
-                if json_data.get('success'): http.request.env['ecommerce.shop'].sudo().search([
-                    ('platform_id','=',platform.id),
-                    ('ecomm_shop_idn','=', json_data.get('shop_id'))
-                    ]).write({'state': 'auth'})
-            elif json_data.get('code',0) == 2:
-                if json_data.get('success'): http.request.env['ecommerce.shop'].sudo().search([
-                    ('platform_id','=',platform.id),
-                    ('ecomm_shop_idn','=', json_data.get('shop_id'))
-                    ]).write({'state': 'deauth'})
-            elif json_data.get('code',0) == 3:
-                data = json_data.get("data",{})
-                http.request.env['ecommerce.shop'].sudo().search([
-                    ('platform_id','=',platform.id),
-                    ('ecomm_shop_idn','=', json_data.get('shop_id'))
-                    ])._order_status_push_shopee(data.get('ordersn'), data.get('status'),data.get('update_time'))
+            _logger.info(json_data)
+            self._solver_shopee(platform,json_data=json_data)
             return http.Response(status=202)
         else:
             return http.Response(status=500)
+
+    def _solver_shopee(self,platform,json_data={}):
+        if json_data.get('code',0) == 1:
+            if json_data.get('success'): 
+                http.request.env['ecommerce.shop'].sudo().search([
+                    ('platform_id','=',platform.id),
+                    ('ecomm_shop_idn','=', json_data.get('shop_id'))
+                ]).write({'state': 'auth'})
+            return True
+        elif json_data.get('code',0) == 2:
+            if json_data.get('success'): 
+                http.request.env['ecommerce.shop'].sudo().search([
+                    ('platform_id','=',platform.id),
+                    ('ecomm_shop_idn','=', json_data.get('shop_id'))
+                ]).write({'state': 'deauth'})
+            return True
+        elif json_data.get('code',0) == 3:
+            data = json_data.get("data",{})
+            http.request.env['ecommerce.shop'].sudo().search([
+                ('platform_id','=',platform.id),
+                ('ecomm_shop_idn','=', json_data.get('shop_id'))
+            ])._order_status_push_shopee(data.get('ordersn'), data.get('status'),data.get('update_time'))
+            return True
+        else:
+            return False
     
     def _auth_callback_shopee(self, shop, **kw):
         #fix security later

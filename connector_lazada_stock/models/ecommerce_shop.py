@@ -82,12 +82,30 @@ class eCommerceShop(models.Model):
         self.ensure_one()
         logistics = self._py_client_lazada_request('/shipment/providers/get','GET').get('data',{}).get('shipment_providers')
         for l in logistics:
-            self.env['ecommerce.shop.carrier'].create({
-                'ecomm_carrier_id': self.env['ecommerce.carrier'].search([
-                    ('platform_id','=',self.platform_id.id),
-                    ('name', '=', l.get('name'))
-                ])[:1].id,
-                'shop_id': self.id,
-                'default': l.get('is_default'),
-                'cod': l.get('cod'),
+            carrier = self.env['ecommerce.shop.carrier'].search([
+                ('shop_id', '=', self.id),
+                ('name','=',l.get('name')),
+            ])
+            if carrier:
+                carrier[0].write({
+                    'enable': l.get('enabled'),
+                    'default': l.get('preferred'),
+                    'cod': l.get('has_cod'),
+                })
+            else:
+                self.env['ecommerce.shop.carrier'].create({
+                    'ecomm_carrier_id': self.env['ecommerce.carrier'].search([
+                        ('platform_id','=', self.platform_id.id),
+                        ('name','=',l.get('name')),
+                    ])[:1].id or self.env['ecommerce.carrier'].create({
+                        'name': l.get('name'),
+                        'platform_id': self.platform_id.id,
+                        'carrier_id' : self.env['delivery.carrier'].create({
+                            'name': l.get('name'),
+                            'product_id': self.env.ref('delivery.product_product_delivery').id
+                        }).id
+                    }).id,
+                    'shop_id': self.id,
+                    'default': l.get('preferred'),
+                    'cod': l.get('has_cod'),
                 })

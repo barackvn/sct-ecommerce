@@ -13,11 +13,11 @@ class SaleOrder(models.Model):
 class eCommerceShop(models.Model):
     _inherit = 'ecommerce.shop'
 
-#    def order_tracking_no_push(self, ordersn, tracking_no):
-#        self.env['sale.order'].search([('ecommerce_shop_id','=',self.id),('client_order_ref','=',ordersn)])[:1].picking_ids.write({
-#            'carrier_tracking_ref': tracking_no,
-#            })
-#        return True
+    def _order_tracking_push_shopee(self, ordersn, tracking_no):
+        self.env['sale.order'].search([('ecommerce_shop_id','=',self.id),('client_order_ref','=',ordersn)])[:1].picking_ids.write({
+            'carrier_tracking_ref': tracking_no,
+            })
+        return True
 
     def _new_order_shopee(self, ordersn, status, update_time):
         resp = self._py_client_shopee().order.get_order_detail(ordersn_list=[ordersn])
@@ -107,8 +107,11 @@ class eCommerceShop(models.Model):
             ('state','=', 'sale'),
             ('need_tracking_no','=',True),
             ('confirmation_date','>',(datetime.now()-timedelta(days=15)).strftime("%Y-%m-%d %H:%M:%S"))
-            ], limit=100)
+            ], limit=50)
         for order in orders:
+            if all(order.picking_ids.filtered(lambda r: r.state not in ['done','cancel']).mapped('carrier_tracking_ref')):
+                order.need_tracking_no = False
+                continue
             logistic = False
             try:
                 logistic = order.ecommerce_shop_id._py_client_shopee().logistic.get_order_logistic(ordersn=order.client_order_ref).get('logistics')
@@ -117,7 +120,6 @@ class eCommerceShop(models.Model):
             if logistic:
                 vals = {
                     'carrier_tracking_ref': logistic['tracking_no'],
-                    'carrier_id': order.carrier_id.id,
                     }
                 if not order.carrier_id: 
                     order.carrier_id = self.env['ecommerce.carrier'].search([('logistic_idn','=', logistic['logistic_id'])])[:1].carrier_id
@@ -144,7 +146,15 @@ class eCommerceShop(models.Model):
                     'ecomm_carrier_id': self.env['ecommerce.carrier'].search([
                         ('platform_id','=', self.platform_id.id),
                         ('logistic_idn','=',l.get('logistic_id')),
-                    ])[:1].id,
+                    ])[:1].id or self.env['ecommerce.carrier'].create({
+                        'name': l.get('logistic_name'),
+                        'logistic_idn': l.get('logistic_id'),
+                        'platform_id': self.platform_id.id,
+                        'carrier_id' : self.env['delivery.carrier'].create({
+                            'name': l.get('logistic_name'),
+                            'product_id': self.env.ref('delivery.product_product_delivery').id
+                        }).id
+                    }).id,
                     'shop_id': self.id,
                     'enable': l.get('enabled'),
                     'default': l.get('preferred'),

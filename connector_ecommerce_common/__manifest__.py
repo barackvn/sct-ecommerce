@@ -20,16 +20,16 @@
     'version': '0.1',
 
     # any module necessary for this one to work correctly
-    'depends': ['website_sale','sale_product_pack','delivery'],
+    'depends': ['website_sale','sale_product_pack','delivery', 'web_widget_image_url'],
 
     # always loaded
     'data': [
         'security/ir.model.access.csv',
         'views/ecommerce_config_views.xml',
+        'views/ecommerce_category_selector_views.xml',
         'views/ecommerce_product_views.xml',
         'views/ecommerce_shop_views.xml',
         'views/product_views.xml',
-        'views/ecommerce_category_selector_views.xml',
         'wizard/ecommerce_product_preview_views.xml',
         'data/cron.xml',
         'data/ecommerce_product_data.xml',

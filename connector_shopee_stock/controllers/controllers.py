@@ -1,10 +1,22 @@
 # -*- coding: utf-8 -*-
 from odoo import http
-#from odoo.addons.shopee_api_client.controllers.controllers import ShopeeApiClient
+from odoo.addons.connector_shopee.controllers.controllers import ShopeeController
 
-#class ShopeeApiClientStock(ShopeeApiClient):
-#    @http.route('/shopee_client/shop/<model("shopee_client.shop"):shop>/order_tracking_no', methods=['POST'], auth='public',csrf=False)
-#    def order_tracking_no(self,shop, **kw):
+class ShopeeController(ShopeeController):
+    def _solver_shopee(self,platform, json_data={}):
+        if not super(ShopeeController, self)._solver_shopee(platform, json_data=json_data):
+            if json_data.get('code',0) == 4:
+                data = json_data.get("data",{})
+                http.request.env['ecommerce.shop'].sudo().search([
+                    ('platform_id','=',platform.id),
+                    ('ecomm_shop_idn','=', json_data.get('shop_id'))
+                ])._order_tracking_push_shopee(data.get('ordersn'), data.get('trackingno'))
+                return True
+            else:
+                return False
+        else:
+            return True
+
 #        if shop.sudo().order_tracking_no_push(kw.get('ordersn'), kw.get('trackingno')):
 #            return http.Response(status=200)
 #        else:

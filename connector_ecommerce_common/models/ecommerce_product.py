@@ -290,9 +290,10 @@ class eCommerceProductTemplate(models.Model):
             getattr(p, '_add_to_shop_{}'.format(p.platform_id.platform))(data=data)
 
     def update_stock(self):
-        platform_id = self.mapped('platform_id')
-        platform_id.ensure_one()
-        getattr(self, "_update_stock_{}".format(platform_id.platform))()
+        if self:
+            platform_id = self.mapped('platform_id')
+            platform_id.ensure_one()
+            getattr(self, "_update_stock_{}".format(platform_id.platform))()
 
     @api.model
     def cron_update_stock(self):
@@ -303,7 +304,7 @@ class eCommerceProductTemplate(models.Model):
         for item in self:
             if item.ecomm_product_product_ids.filtered('sku'):
                 item.product_product_id = False
-                if item.product_tmpl_id:
+                if item.product_tmpl_id and item.product_tmpl_id.active:
                     d = {}
                     for v in item.ecomm_product_product_ids:
                         if v.sku:
@@ -331,7 +332,7 @@ class eCommerceProductTemplate(models.Model):
                             ])[:1].id}) for v in item.ecomm_product_product_ids if v.sku]
                         })
             elif item.sku:
-                if not item.product_product_id or item.product_product_id.default_code != item.sku:
+                if not item.product_product_id or not item.product_product_id.active or item.product_product_id.default_code != item.sku:
                     p = self.env['product.product'].search([
                         ('default_code','=',item.sku)])
                     item.write({

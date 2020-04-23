@@ -13,7 +13,7 @@ class eCommercerShop(models.Model):
     def _auth_shopee(self):
         self.ensure_one()
 #        client_name = self._cr.dbname
-        redirect_url = "https://nutishop.scaleup.top/connector_ecommerce/{}/auth".format(self.id)
+        redirect_url = "{}/connector_ecommerce/{}/auth".format(self.env['ir.config_parameter'].sudo().get_param('web.base.url'),self.id)
 #        req = requests.post(url=url, data={'client':client_name,'client_shop_id': self.id, 'name': self.name})
         return {
             "type": "ir.actions.act_url",
@@ -23,7 +23,7 @@ class eCommercerShop(models.Model):
 
     def _deauth_shopee(self):
         self.ensure_one()
-        redirect_url = "https://nutishop.scaleup.top/connector_ecommerce/{}/deauth".format(self.id)
+        redirect_url = "{}/connector_ecommerce/{}/auth".format(self.env['ir.config_parameter'].sudo().get_param('web.base.url'),self.id)
         return {
             "type": "ir.actions.act_url",
             "url": self._py_client_shopee().shop.cancel_authorize(redirect_url=redirect_url),
@@ -43,24 +43,23 @@ class eCommercerShop(models.Model):
         return pyshopee.Client(self.ecomm_shop_idn, self.platform_id.partner_id, self.platform_id.key)
 
     def _get_categories_shopee(self):
-        #should use ref, later
-        platform_id = self.env['ecommerce.platform'].search([('platform', '=','shopee')])[:1].id
-        
         categs = self._py_client_shopee().item.get_categories().get('categories')
         path = [(False,0)] # categ (id,idn)
         rec = None
         need_prnt = []
         for categ in categs:
+            if self.env['ecommerce.category'].search([('platform_id','=', self.platform_id.id),('platform_categ_idn','=',categ['category_id'])]):
+                continue
             temp = path[:]
             while path and path[-1][1] != categ['parent_id']: 
                 path.pop()
             if not path:
                 path = temp[:]
-                temp_parent = self.env['ecommerce.category'].search([('platform_id','=', platform_id),('platform_categ_idn','=',categ['parent_id'])])[:1]
+                temp_parent = self.env['ecommerce.category'].search([('platform_id','=', self.platform_id.id),('platform_categ_idn','=',categ['parent_id'])])[:1]
                 if temp_parent:
                     vals = {
                         'name': categ['category_name'],
-                        'platform_id': platform_id,
+                        'platform_id': self.platform_id.id,
                         'platform_categ_idn': categ['category_id'],
                         'platform_parent_categ_idn': categ['parent_id'],
                         'parent_id': temp_parent.id
@@ -69,7 +68,7 @@ class eCommercerShop(models.Model):
                 else:
                     vals = {
                         'name': categ['category_name'],
-                        'platform_id': platform_id,
+                        'platform_id':self.platform_id.id,
                         'platform_categ_idn': categ['category_id'],
                         'platform_parent_categ_idn': categ['parent_id']
                         }
@@ -78,7 +77,7 @@ class eCommercerShop(models.Model):
             else:
                 vals = {
                     'name': categ['category_name'],
-                    'platform_id': platform_id,
+                    'platform_id': self.platform_id.id,
                     'platform_categ_idn': categ['category_id'],
                     'platform_parent_categ_idn': categ['parent_id'],
                     'parent_id': path[-1][0]
@@ -88,7 +87,7 @@ class eCommercerShop(models.Model):
 
         for categ in need_prnt:
             categ.parent_id = self.env['ecommerce.category'].search([
-                ('platform_id','=',platform_id),
+                ('platform_id','=',self.platform_id.id),
                 ('platform_categ_idn','=',categ.platform_parent_categ_idn)])[:1]
 
     def _vacuum_product_shopee(self):
@@ -97,11 +96,10 @@ class eCommercerShop(models.Model):
         id_list = []
         while True:
             resp = self._py_client_shopee().item.get_item_list(pagination_offset=offset,pagination_entries_per_page=limit)
-            id_list += [i['item_id'] for i in resp.get('items',[])]
+            id_list += [str(i['item_id']) for i in resp.get('items',[])]
             if not resp.get('more'): break
             offset += limit
-        _logger.info(self.env['ecommerce.product.template'].search([('platform_item_idn','not in',id_list)]))
-        #self.env['ecommerce.product.template'].search([('platform_item_idn','not in',id_list)]).unlink()
+        self.env['ecommerce.product.template'].search([('shop_id','=',self.id),('platform_item_idn','not in',id_list)]).unlink()
 
 
     def _sync_product_shopee(self, **kw):
@@ -114,6 +112,8 @@ class eCommercerShop(models.Model):
             kw.setdefault('update_time_from', int(self._last_product_sync.timestamp()))
         resp = self._py_client_shopee().item.get_item_list(**kw)
         for item in resp['items']:
+            if item['status'] == 'DELETED': 
+                continue
             details = self._py_client_shopee().item.get_item_detail(item_id=item.get('item_id',0)).get('item',{})
             tmpl = model.search([
                 ('shop_id', '=', self.id),
@@ -146,10 +146,12 @@ class eCommercerShop(models.Model):
                     'sku': item.get('item_sku'),
                     'price': item.get('price'),
                     'ecomm_product_image_ids': [(1, tmpl.ecomm_product_image_ids[i].id, {
-                        'sequence': i, 
+                        'sequence': i,
+                        'res_model': 'ecommerce.product.template',
                         'image_url': i < l_i and details['images'][i] or False
                     }) if i < l_id else (0, _, {
                         'sequence': i,
+                        'res_model': 'ecommerce.product.template',
                         'image_url': details['images'][i]
                     }) for i in range(max(l_id,l_i))],
                     '_last_sync': datetime.now(),
@@ -165,6 +167,7 @@ class eCommercerShop(models.Model):
                     '_last_sync': datetime.now(),
                     'ecomm_product_image_ids': [(0, _, {
                         'sequence': i,
+                        'res_model': 'ecommerce.product.template',
                         'image_url': url
                     }) for i, url in enumerate(details.get("images",[]))],
                     'ecomm_product_product_ids': [(0, _, {
