@@ -187,19 +187,19 @@ class eCommercerShop(models.Model):
     @api.multi
     def _order_status_push_shopee(self, ordersn, status, update_time):
         for shop in self:
-            if status == 'UNPAID': shop._new_order_shopee(ordersn, status, update_time)
+            if status == 'UNPAID': shop._new_order_shopee(ordersn)
             else: shop._update_order_shopee(ordersn, status, update_time)
             return True
 
-    def _new_order_shopee(self, ordersn, status, update_time, resp = False):
-        resp = resp or self._py_client_shopee().order.get_order_detail(ordersn_list=[ordersn])
-        shopee_orders = resp.get('orders')
-        shopee_order = shopee_orders[0]
-        address = shopee_order['recipient_address']
+    def _new_order_shopee(self, ordersn, detail = False):
+        order = self.env['sale.order'].search([('ecommerce_shop_id','=',self.id),('client_order_ref','=',ordersn)])[:1]
+        if order: return order
+        detail = detail or self._py_client_shopee().order.get_order_detail(ordersn_list=[ordersn])['orders'][0]
+        address = detail['recipient_address']
         partner_vals = {
                 'phone': address['phone'],
                 'name': address['name'],
-                'ref': shopee_order['buyer_username'],
+                'ref': detail['buyer_username'],
                 }
         splits = address['full_address'].split(address['district'] or address['city'] or address['state'] or None)
         shipping_address = {
@@ -245,13 +245,13 @@ class eCommercerShop(models.Model):
                     'price_unit': item['variation_discounted_price'] != '0' and item['variation_discounted_price'] or item['variation_original_price'],
                     'product_uom_qty': item['variation_quantity_purchased'],
                     #'route_id': self.route_id.id,
-                    }) for item in shopee_order['items']], 
+                    }) for item in detail['items']], 
                 })
         return order
 
 
-    def _update_order_shopee(self, ordersn, status, update_time):
-        order = self.env['sale.order'].search([('ecommerce_shop_id','=',self.id),('client_order_ref','=',ordersn)])[:1] or self._new_order_shopee(ordersn, status, update_time)
+    def _update_order_shopee(self, ordersn, status, update_time, detail=False):
+        order = self.env['sale.order'].search([('ecommerce_shop_id','=',self.id),('client_order_ref','=',ordersn)])[:1] or self._new_order_shopee(ordersn, detail=detail)
         if status in ['READY_TO_SHIP','SHIPPED']:
             if order.state in ['draft','sent']: order.action_confirm()
         elif status == 'CANCELLED':

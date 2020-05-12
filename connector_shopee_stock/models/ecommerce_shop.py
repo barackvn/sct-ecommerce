@@ -19,18 +19,18 @@ class eCommerceShop(models.Model):
             })
         return True
 
-    def _new_order_shopee(self, ordersn, status, update_time):
-        resp = self._py_client_shopee().order.get_order_detail(ordersn_list=[ordersn])
-        order = super(eCommerceShop, self)._new_order_shopee(ordersn, status, update_time, resp=resp)
+    def _new_order_shopee(self, ordersn, detail=False):
+        detail = detail or self._py_client_shopee().order.get_order_detail(ordersn_list=[ordersn])['orders'][0]
+        order = super(eCommerceShop, self)._new_order_shopee(ordersn, detail=detail)
         order.carrier_id = self.env['ecommerce.carrier'].search([
-            ('name','=', resp.get('orders') and resp['orders'][0].get('shipping_carrier'))
+            ('name','=', detail.get('shipping_carrier'))
             ])[:1].carrier_id
         for line in order.order_line:
             line.route_id = self.env.ref('connector_shopee_stock.stock_location_route_shopee')
         return order
 
-    def _update_order_shopee(self, ordersn, status, update_time):
-        order = super(eCommerceShop, self)._update_order_shopee(ordersn, status, update_time)
+    def _update_order_shopee(self, ordersn, status, update_time, detail=False):
+        order = super(eCommerceShop, self)._update_order_shopee(ordersn, status, update_time, detail=detail)
         if status in ['READY_TO_SHIP','RETRY_SHIP']:
             order.need_tracking_no = True
             pick_ids = order.picking_ids.filtered(lambda r: r.state not in ['done', 'cancel'])

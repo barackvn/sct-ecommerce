@@ -46,8 +46,11 @@
                             <field name="ecomm_shop_name"/>
                             <field name="platform_id"/>
                             <field name="ecomm_shop_idn"/>
+                            <field name="team_id"/>
                             <field name="is_main"/>
                             <field name="auto_sync" widget="boolean_toggle"/>
+                        </group>
+                        <group name="config">
                         </group>
                         <notebook>
                         </notebook>

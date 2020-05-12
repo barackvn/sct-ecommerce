@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<odoo>
+    <data noupdate="1">
+        <record model="product.product" id="product_product_ecommerce_expense">
+            <field name="name">eCommerce Expenses</field>
+            <field name="type">service</field>
+            <field name="default_code">EXP_ECOMM</field>
+            <field name="categ_id" ref="product.cat_expense"/>
+            <field name="can_be_expensed" eval="True"/>
+        </record>
+    </data>
+</odoo>

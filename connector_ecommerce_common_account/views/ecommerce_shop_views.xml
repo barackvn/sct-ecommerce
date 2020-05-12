@@ -1,0 +1,23 @@
+<odoo>
+    <data>
+        <record model="ir.ui.view" id="ecommerce_shop_account_form_view">
+            <field name="name">ecommerce.shop.account.form</field>
+            <field name="model">ecommerce.shop</field>
+            <field name="inherit_id" ref="connector_ecommerce_common.ecommerce_shop_form_view"/>
+            <field name="arch" type="xml">
+                <!--xpath expr="//group[@name='config']" position="inside">
+                    <field name="enable_accounting"/>
+                </xpath-->
+                <xpath expr="//notebook" position="inside">
+                    <page name="accounting" string="Accounting">
+                        <group>
+                            <field name="journal_id" domain="[('type','in',['bank','cash'])]" context="{'default_type': 'bank'}"/>
+                            <!--field name="default_journal_id" invisible="1"/-->
+                        </group>
+                    </page>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>
+

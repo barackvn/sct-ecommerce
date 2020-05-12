@@ -60,7 +60,7 @@ class eCommerceShop(models.Model):
 
     @api.model
     def cron_sync_product(self):
-        shops = self.env['ecommerce.shop'].search([('auto_sync','=',True)])
+        shops = self.env['ecommerce.shop'].search([('state','=','auth'),('auto_sync','=',True)])
         shops.vacuum_product()
         shops.sync_product()
 
