@@ -15,10 +15,10 @@ class eCommerceShop(models.Model):
         kw.setdefault('offset', 0)
         kw.setdefault('start_time', self._last_transaction_sync and (self._last_transaction_sync + timedelta(days=1)).strftime("%Y-%m-%d") \
             or (date.today()-timedelta(days=7)).strftime("%Y-%m-%d"))
-        kw.setdefault('end_time', (date.today()-timedelta(days=1)).strftime("%Y-%m-%d"))
+        dt = datetime.strptime(kw['start_time'],"%Y-%m-%d")
+        kw.setdefault('end_time', (dt + timedelta(6-dt.weekday())).strftime("%Y-%m-%d"))
         transactions = []
         while True:
-            _logger.info(kw)
             resp = self._py_client_lazada_request('/finance/transaction/detail/get','GET', **kw)
             transactions += resp['data']
             if len(resp['data']) < kw['limit']:
@@ -32,6 +32,7 @@ class eCommerceShop(models.Model):
                 'note': 'Transactions: {}'.format(t['transaction_number'])
                 }
         if transactions:
+            transactions.sort(key=lambda t: (datetime.strptime(t['transaction_date'], "%d %b %Y"), t.get('order_no','')))
             stmt = self.env['account.bank.statement'].search([
                 ('journal_id','=', self.journal_id.id),
                 ('name','=',transactions[0]['statement'])
@@ -62,7 +63,6 @@ class eCommerceShop(models.Model):
                     last_stmt.balance_end_real = last_stmt.balance_end
             lines, l = [], init_value(transactions[0])
             for t in transactions[1:]:
-                if t['statement'] != stmt['name']: break
                 if t.get('order_no') == l['name']:
                     l['amount'] += float(t['amount'])
                     l['note'] += ', {}'.format(t['transaction_number'])
@@ -83,20 +83,26 @@ class eCommerceShop(models.Model):
                     ('state','in',['sale','done'])], limit=1)
                 if not order:
                     continue
-                _logger.info(datetime.now())
-                if float_compare(line.amount, order.amount_untaxed, precision_digits=precision_digits) != 0:
-                    _logger.info(datetime.now())
+                if any([i.state == 'paid' for i in order.invoice_ids]):
+                    order.write({
+                        'order_line': [(0, _, {
+                            'product_id': self.env.ref('connector_ecommerce_common_account.product_product_ecommerce_expense').id,
+                            'price_unit': line.amount
+                        })]
+                    })
+                    invoice_ids = order.action_invoice_create(final=True)
+                    for invoice in self.env['account.invoice'].browse(invoice_ids):
+                        if invoice.state == "draft": invoice.action_invoice_open()
+                elif float_compare(line.amount, order.amount_untaxed, precision_digits=precision_digits) != 0:
                     order.write({
                         'order_line': [(0, _, {
                             'product_id': self.env.ref('connector_ecommerce_common_account.product_product_ecommerce_expense').id,
                             'price_unit': line.amount - order.amount_untaxed
                         })]
                     })
-                    _logger.info(datetime.now())
                     invoice_ids = order.action_invoice_create(final=True)
                     for invoice in self.env['account.invoice'].browse(invoice_ids):
                         if invoice.state == "draft": invoice.action_invoice_open()
-                    _logger.info(datetime.now())
                 counterpart_aml_dicts = []
                 for ml in self.env['account.move.line'].search([
                     ('account_id','=',line.partner_id and line.partner_id.property_account_receivable_id.id or account_rcv.id),
@@ -104,13 +110,14 @@ class eCommerceShop(models.Model):
                     ('move_id.state','=','posted'),
                 ]):
                     amount = ml.currency_id and ml.amount_residual_currency or ml.amount_residual
+                    if amount == 0: 
+                        continue
                     counterpart_aml_dicts.append({
                         'move_line': ml,
                         'name': ml.name,
                         'debit': amount < 0 and -amount or 0,
                         'credit': amount > 0 and amount or 0,
                     })
-                _logger.info(counterpart_aml_dicts)
                 line.process_reconciliation(counterpart_aml_dicts=counterpart_aml_dicts)
             self._last_transaction_sync = l['date']
             

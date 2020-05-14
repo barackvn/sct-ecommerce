@@ -18,12 +18,17 @@ class eCommerceShop(models.Model):
 
     def _py_client_lazada_request(self, *args, **kwargs):
         self.ensure_one()
-        url = 'https://auth.lazada.com/rest' if ('/auth/token/create' in args or '/auth/token/refresh' in args) else self.url
+        if '/auth/token/create' in args or '/auth/token/refresh' in args:
+            url = 'https://auth.lazada.com/rest' 
+            token = None
+        else:
+            url = self.url
+            token = self.access_token
         client = lazop.LazopClient(url, self.platform_id.partner_id, self.platform_id.key)
         request = lazop.LazopRequest(*args)
         for k,v in kwargs.items():
             request.add_api_param(k,v)
-        response = client.execute(request, self.access_token or None)
+        response = client.execute(request, token)
         #_logger.info(response.__dict__)
         return response.body
     
@@ -40,7 +45,7 @@ class eCommerceShop(models.Model):
     def _auth_lazada(self):
         params = {
             'client_id': self.platform_id.partner_id,
-            'redirect_uri': 'https://nutishop.scaleup.top/connector_ecommerce/{}/auth'.format(self.id),
+            'redirect_uri': '{}/connector_ecommerce/{}/auth'.format(self.env['ir.config_parameter'].sudo().get_param('web.base.url'),self.id),
             'response_type': 'code',
             'force_auth': True
             }
