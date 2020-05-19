@@ -27,11 +27,12 @@ class eCommerceShop(models.Model):
             if len(resp['data']) < kw['limit']:
                 break
             kw['offset'] += kw['limit']
-        def init_value(t):
+        def init_value(t, s):
             return {
                 'date': datetime.strptime(t['transaction_date'], "%d %b %Y"),
                 'name': t.get('order_no') or t.get('fee_name') or t['transaction_number'],
                 'amount': float(t['amount']),
+                'sequence': s,
                 'note': 'Transactions: {}'.format(t['transaction_number'])
                 }
         if transactions:
@@ -63,14 +64,16 @@ class eCommerceShop(models.Model):
                     })
                     last_stmt.balance_end_real = last_stmt.balance_end
                 stmt.balance_start = last_stmt and last_stmt.balance_end or 0 
-            lines, l = [], init_value(transactions[0])
+            s = len(stmt.line_ids)+1
+            lines, l = [], init_value(transactions[0], s)
             for t in transactions[1:]:
                 if t.get('order_no') == l['name']:
                     l['amount'] += float(t['amount'])
                     l['note'] += ', {}'.format(t['transaction_number'])
                 else:
                     lines.append(l)
-                    l = init_value(t)
+                    s += 1
+                    l = init_value(t, s)
             lines.append(l)
             stmt.write({
                 'line_ids': [(0, _, l) for l in lines],
