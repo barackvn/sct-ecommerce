@@ -50,7 +50,7 @@ class eCommerceShop(models.Model):
         # avoiding duplicate by adding 1 to last_sync timestamp
         kw.setdefault('create_time_from', self._last_transaction_sync and int(self._last_transaction_sync.timestamp()+1) \
             or int((datetime.now() - timedelta(days=7)).timestamp()))
-        if self._last_transaction_sync not kw['create_time_from'] > int(self._last_transaction_sync.timestamp()):
+        if self._last_transaction_sync and  not kw['create_time_from'] > int(self._last_transaction_sync.timestamp()):
             return False
         kw.setdefault('create_time_to', int(datetime.now().timestamp()))
         transaction_list = []
