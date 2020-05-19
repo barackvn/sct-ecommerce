@@ -69,7 +69,7 @@ class eCommerceShop(models.Model):
                 'name': datetime.fromtimestamp(transaction_list[0]['create_time']).astimezone(pytz.timezone(self.env.user.tz or 'UTC')).strftime('%Y-%m-%d'),
                 'date': datetime.fromtimestamp(transaction_list[0]['create_time']).astimezone(pytz.timezone(self.env.user.tz or 'UTC')).strftime('%Y-%m-%d'),
                 #'name': fields.Datetime.now().astimezone(pytz.timezone(self.env.user.tz or 'UTC')).strftime('%Y-%m-%d'),
-                'balance_start': last_stmt and last_stmt.balance_end or 0,
+                'balance_start': last_stmt and last_stmt.balance_end or transaction_list[0]['current_balance'] -transaction_list[0]['amount'],
             })
             stmt.write({
                 'line_ids': [(0, _, {
@@ -78,8 +78,9 @@ class eCommerceShop(models.Model):
                     'partner_id': self.env['res.partner'].search([('ref','=',t['buyer_name'])])[:1].id,
                     'ref': t['transaction_id'],
                     'amount': t['amount'],
+                    'sequence': i+1, 
                     'note': json.dumps({k: v for k,v in t.items() if v}),
-                }) for t in transaction_list],
+                }) for i, t in enumerate(transaction_list)],
             })
             stmt.balance_end_real = stmt.balance_end
             account_rcv = self.env['account.account'].search([('user_type_id.type', '=', 'receivable')], limit=1)

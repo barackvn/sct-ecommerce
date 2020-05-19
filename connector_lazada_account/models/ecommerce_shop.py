@@ -14,7 +14,7 @@ class eCommerceShop(models.Model):
         kw.setdefault('limit', 500)
         kw.setdefault('offset', 0)
         kw.setdefault('start_time', self._last_transaction_sync and (self._last_transaction_sync + timedelta(days=1)).strftime("%Y-%m-%d") \
-            or (date.today()-timedelta(days=7)).strftime("%Y-%m-%d"))
+            or (date.today()-timedelta(date.today().weekday())).strftime("%Y-%m-%d"))
         sdt = datetime.strptime(kw['start_time'],"%Y-%m-%d")
         edt = dt + timedelta(6-dt.weekday()) if dt + timedelta(6-dt.weekday()) < date.today() else date.today() - timedelta(1)
         kw.setdefault('end_time', edt.strftime("%Y-%m-%d"))
