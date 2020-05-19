@@ -56,7 +56,6 @@ class eCommerceShop(models.Model):
         kw.setdefault('create_time_to', min(int(datetime.now().timestamp()),kw['create_time_from'] + 1209600))
         transaction_list = []
         while True:
-            _logger.info(kw)
             resp = self._py_client_shopee().execute("wallet/transaction/list", "POST", kw)
             transaction_list += resp['transaction_list']
             if not resp['has_more']: break
@@ -88,7 +87,6 @@ class eCommerceShop(models.Model):
             for line in stmt.line_ids:
                 if line.name.startswith('ESCROW_VERIFIED_ADD'):
                     counterpart_aml_dicts = []
-                    _logger.info(line.name)
                     for ml in self.env['account.move.line'].search([
                         ('account_id','=',line.partner_id and line.partner_id.property_account_receivable_id.id or account_rcv.id),
                         ('name','=', line.name.split('ESCROW_VERIFIED_ADD: ')[-1]),
@@ -101,7 +99,6 @@ class eCommerceShop(models.Model):
                             'debit': amount < 0 and -amount or 0,
                             'credit': amount > 0 and amount or 0,
                         })
-                    _logger.info(counterpart_aml_dicts)
                     line.process_reconciliation(counterpart_aml_dicts=counterpart_aml_dicts)
             self._last_transaction_sync = datetime.fromtimestamp(kw.get('create_time_to'))
 
