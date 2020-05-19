@@ -50,6 +50,8 @@ class eCommerceShop(models.Model):
         # avoiding duplicate by adding 1 to last_sync timestamp
         kw.setdefault('create_time_from', self._last_transaction_sync and int(self._last_transaction_sync.timestamp()+1) \
             or int((datetime.now() - timedelta(days=7)).timestamp()))
+        if not kw['create_time_from'] > int(self._last_transaction_sync.timestamp()):
+            return False
         kw.setdefault('create_time_to', int(datetime.now().timestamp()))
         transaction_list = []
         while True:
@@ -64,7 +66,9 @@ class eCommerceShop(models.Model):
             last_stmt = self.env['account.bank.statement'].search([('journal_id', '=', self.journal_id.id)], limit=1)
             stmt = self.env['account.bank.statement'].create({
                 'journal_id': self.journal_id.id,
-                'name': fields.Datetime.now().astimezone(pytz.timezone(self.env.user.tz or 'UTC')).strftime('%Y-%m-%d'),
+                'name': datetime.fromtimestamp(transaction_list[0]['create_time']).astimezone(pytz.timezone(self.env.user.tz or 'UTC')).strftime('%Y-%m-%d'),
+                'date': datetime.fromtimestamp(transaction_list[0]['create_time']).astimezone(pytz.timezone(self.env.user.tz or 'UTC')).strftime('%Y-%m-%d'),
+                #'name': fields.Datetime.now().astimezone(pytz.timezone(self.env.user.tz or 'UTC')).strftime('%Y-%m-%d'),
                 'balance_start': last_stmt and last_stmt.balance_end or 0,
             })
             stmt.write({

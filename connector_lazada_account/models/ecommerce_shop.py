@@ -15,6 +15,8 @@ class eCommerceShop(models.Model):
         kw.setdefault('offset', 0)
         kw.setdefault('start_time', self._last_transaction_sync and (self._last_transaction_sync + timedelta(days=1)).strftime("%Y-%m-%d") \
             or (date.today()-timedelta(days=7)).strftime("%Y-%m-%d"))
+        if not kw['start_time'] < date.today().strftime("%Y-%m-%d") or not kw['start_time'] > self._last_transaction_sync.strftime("%Y-%m-%d"):
+            return False
         dt = datetime.strptime(kw['start_time'],"%Y-%m-%d")
         kw.setdefault('end_time', (dt + timedelta(6-dt.weekday())).strftime("%Y-%m-%d"))
         transactions = []
@@ -54,7 +56,7 @@ class eCommerceShop(models.Model):
                 if resp['data'] and last_stmt and last_stmt.line_ids[-1].ref != resp['data'][0]['statement_number']:
                     last_stmt.write({
                         'line_ids': [(0, _, {
-                            'date': datetime.strptime(resp['data'][0]['created_at'], "%Y-%m-%d %H-%M-%S"),
+                            'date': datetime.strptime(resp['data'][0]['created_at'], "%Y-%m-%d %H:%M:%S"),
                             'name': 'Payout',
                             'ref': resp['data'][0]['statement_number'],
                             'amount': -float(resp['data'][0]['closing_balance']),
