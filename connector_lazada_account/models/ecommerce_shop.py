@@ -51,18 +51,17 @@ class eCommerceShop(models.Model):
                     ('date','>=',stmt.date-timedelta(days=7)),
                     ('date','<',stmt.date)
                 ], limit=1)
-                stmt.balance_start = last_stmt and last_stmt.balance_end or 0 
                 resp = self._py_client_lazada_request('/finance/payout/status/get','GET', created_after=(stmt.date-timedelta(days=7)).strftime("%Y-%m-%d"))
                 if resp['data'] and last_stmt and last_stmt.line_ids[-1].ref != resp['data'][0]['statement_number']:
                     last_stmt.write({
                         'line_ids': [(0, _, {
                             'date': datetime.strptime(resp['data'][0]['created_at'], "%Y-%m-%d %H:%M:%S"),
-                            'name': 'Payout',
-                            'ref': resp['data'][0]['statement_number'],
+                            'name': 'Payout: {}'.format(resp['data'][0]['statement_number']),
                             'amount': -float(resp['data'][0]['closing_balance']),
                         })]
                     })
                     last_stmt.balance_end_real = last_stmt.balance_end
+                stmt.balance_start = last_stmt and last_stmt.balance_end or 0 
             lines, l = [], init_value(transactions[0])
             for t in transactions[1:]:
                 if t.get('order_no') == l['name']:
