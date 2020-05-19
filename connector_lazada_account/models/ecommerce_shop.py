@@ -13,8 +13,9 @@ class eCommerceShop(models.Model):
         self.ensure_one()
         kw.setdefault('limit', 500)
         kw.setdefault('offset', 0)
-        kw.setdefault('start_time', self._last_transaction_sync and (self._last_transaction_sync + timedelta(days=1)).strftime("%Y-%m-%d") \
-            or (date.today()-timedelta(date.today().weekday())).strftime("%Y-%m-%d"))
+        kw.setdefault('start_time', self._last_transaction_sync and \
+            max(self._last_transaction_sync + timedelta(days=1),date.today()-timedelta(date.today().weekday())).strftime("%Y-%m-%d") or \
+            (date.today()-timedelta(date.today().weekday())).strftime("%Y-%m-%d"))
         dt = datetime.strptime(kw['start_time'],"%Y-%m-%d")
         kw.setdefault('end_time', min(dt + timedelta(6-dt.weekday()),date.today() - timedelta(1)).strftime("%Y-%m-%d"))
         if not kw['end_time'] < date.today().strftime("%Y-%m-%d") or not kw['start_time'] > self._last_transaction_sync.strftime("%Y-%m-%d"):

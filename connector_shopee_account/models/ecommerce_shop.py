@@ -48,8 +48,9 @@ class eCommerceShop(models.Model):
         kw.setdefault('pagination_offset', 0)
         kw.setdefault('pagination_entries_per_page', 100)
         # avoiding duplicate by adding 1 to last_sync timestamp
-        kw.setdefault('create_time_from', self._last_transaction_sync and int(self._last_transaction_sync.timestamp()+1) \
-            or int((datetime.now() - timedelta(days=7)).timestamp()))
+        kw.setdefault('create_time_from', self._last_transaction_sync and \
+            max(int(self._last_transaction_sync.timestamp()+1), int(datetime.now().timestamp())-1209600) or \
+            int((datetime.now() - timedelta(days=7)).timestamp()))
         if self._last_transaction_sync and  not kw['create_time_from'] > int(self._last_transaction_sync.timestamp()):
             return False
         kw.setdefault('create_time_to', min(int(datetime.now().timestamp()),kw['create_time_from'] + 1209600))
