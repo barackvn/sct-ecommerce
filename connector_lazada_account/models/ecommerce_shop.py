@@ -15,10 +15,11 @@ class eCommerceShop(models.Model):
         kw.setdefault('offset', 0)
         kw.setdefault('start_time', self._last_transaction_sync and (self._last_transaction_sync + timedelta(days=1)).strftime("%Y-%m-%d") \
             or (date.today()-timedelta(days=7)).strftime("%Y-%m-%d"))
-        if not kw['start_time'] < date.today().strftime("%Y-%m-%d") or not kw['start_time'] > self._last_transaction_sync.strftime("%Y-%m-%d"):
+        sdt = datetime.strptime(kw['start_time'],"%Y-%m-%d")
+        edt = dt + timedelta(6-dt.weekday()) if dt + timedelta(6-dt.weekday()) < date.today() else date.today() - timedelta(1)
+        kw.setdefault('end_time', edt.strftime("%Y-%m-%d"))
+        if not kw['end_time'] < date.today().strftime("%Y-%m-%d") or not kw['start_time'] > self._last_transaction_sync.strftime("%Y-%m-%d"):
             return False
-        dt = datetime.strptime(kw['start_time'],"%Y-%m-%d")
-        kw.setdefault('end_time', (dt + timedelta(6-dt.weekday())).strftime("%Y-%m-%d"))
         transactions = []
         while True:
             resp = self._py_client_lazada_request('/finance/transaction/detail/get','GET', **kw)
