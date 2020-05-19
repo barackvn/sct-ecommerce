@@ -74,7 +74,7 @@ class eCommerceShop(models.Model):
             stmt.write({
                 'line_ids': [(0, _, {
                     'date': datetime.fromtimestamp(t['create_time']).astimezone(pytz.timezone(self.env.user.tz or 'UTC')).strftime('%Y-%m-%d'),
-                    'name': t['ordersn'] and '{}: {}'.format(t['transaction_type'], t['ordersn']) or t['withdrawal_id'] and '{}: {}'.format(t['transaction_type'], t['withdrawal_id']) or t['transaction_type'],
+                    'name': t.get('ordersn') and '{}: {}'.format(t['transaction_type'], t['ordersn']) or t.get('withdrawal_id') and '{}: {}'.format(t['transaction_type'], t['withdrawal_id']) or t['transaction_type'],
                     'partner_id': self.env['res.partner'].search([('ref','=',t['buyer_name'])])[:1].id,
                     'ref': t['transaction_id'],
                     'amount': t['amount'],
