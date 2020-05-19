@@ -43,13 +43,13 @@ class eCommerceShop(models.Model):
                     'name': transactions[0]['statement'],
                     'date': datetime.strptime(transactions[0]['transaction_date'], "%d %b %Y")
                 })
-                stmt.onchange_journal_id()
                 #include payout
                 last_stmt = self.env['account.bank.statement'].search([
                     ('journal_id','=', self.journal_id.id),
                     ('date','>=',stmt.date-timedelta(days=7)),
                     ('date','<',stmt.date)
                 ], limit=1)
+                stmt.balance_start = last_stmt and last_stmt.balance_end or 0 
                 resp = self._py_client_lazada_request('/finance/payout/status/get','GET', created_after=(stmt.date-timedelta(days=7)).strftime("%Y-%m-%d"))
                 if resp['data'] and last_stmt and last_stmt.line_ids[-1].ref != resp['data'][0]['statement_number']:
                     last_stmt.write({

@@ -61,11 +61,12 @@ class eCommerceShop(models.Model):
 
         if transaction_list:
             transaction_list = transaction_list[::-1]
+            last_stmt = self.env['account.bank.statement'].search([('journal_id', '=', journal_id)], limit=1)
             stmt = self.env['account.bank.statement'].create({
                 'journal_id': self.journal_id.id,
                 'name': fields.Datetime.now().astimezone(pytz.timezone(self.env.user.tz or 'UTC')).strftime('%Y-%m-%d'),
+                'balance_start': last_stmt and last_stmt.balance_end or 0,
             })
-            stmt.onchange_journal_id()
             stmt.write({
                 'line_ids': [(0, _, {
                     'date': datetime.fromtimestamp(t['create_time']).astimezone(pytz.timezone(self.env.user.tz or 'UTC')).strftime('%Y-%m-%d'),
