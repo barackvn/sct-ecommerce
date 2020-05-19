@@ -52,7 +52,7 @@ class eCommerceShop(models.Model):
             or int((datetime.now() - timedelta(days=7)).timestamp()))
         if self._last_transaction_sync and  not kw['create_time_from'] > int(self._last_transaction_sync.timestamp()):
             return False
-        kw.setdefault('create_time_to', int(datetime.now().timestamp()))
+        kw.setdefault('create_time_to', min(int(datetime.now().timestamp()),kw['create_time_from'] + 1209600))
         transaction_list = []
         while True:
             _logger.info(kw)
