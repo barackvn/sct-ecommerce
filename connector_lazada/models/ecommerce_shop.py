@@ -285,12 +285,11 @@ class eCommerceShop(models.Model):
     def _update_order_lazada(self, order, statuses=[], detail=False):
         for status in statuses:
             if status == 'ready_to_ship':
-                if order.state in ['draft', 'sent']: order.action_confirm()
+                if order.state in ['draft', 'sent']: 
+                    order.action_confirm()
             elif status == 'canceled':
-                try: 
+                if order.state in ['draft', 'sent']: 
                     order.action_cancel()
-                except:
-                    pass
             elif status == 'delivered':
                 if order.state in ['draft', 'sent']:
                     order.action_confirm()

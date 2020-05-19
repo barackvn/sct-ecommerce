@@ -32,6 +32,7 @@ class eCommerceShop(models.Model):
     def _update_order_shopee(self, ordersn, status, update_time, detail=False):
         order = super(eCommerceShop, self)._update_order_shopee(ordersn, status, update_time, detail=detail)
         if status in ['READY_TO_SHIP','RETRY_SHIP']:
+            order.invoice_shipping_on_delivery = False
             order.need_tracking_no = True
             pick_ids = order.picking_ids.filtered(lambda r: r.state not in ['done', 'cancel'])
             pick_ids.write({'carrier_id': pick_ids.filtered('carrier_id')[:1].carrier_id.id})
@@ -73,6 +74,8 @@ class eCommerceShop(models.Model):
                                     'lot_id': v.lot_id and v.lot_id.id
                                 }) for i,v in enumerate(moves[0].move_line_ids[l:])]
                             })
+            for line in order.order_line:
+                line.product_uom_qty = line.qty_delivered
 
         elif status == 'COMPLETED':
             pick_ids = order.picking_ids.filtered(lambda r: r.state not in ['done', 'cancel'] and r.picking_type_id in [self.env.ref('connector_shopee_stock.stock_picking_type_shopee_out'), self.env.ref('connector_shopee_stock.stock_picking_type_shopee_in')])

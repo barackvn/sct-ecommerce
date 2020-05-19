@@ -12,23 +12,35 @@ class eCommerceShop(models.Model):
 
 
     def _update_order_shopee(self, ordersn, status, update_time, detail=False):
-        if status in ['SHIPPED', 'COMPLETED']:
-            detail = detail or self._py_client_shopee().order.get_order_detail(ordersn_list=[ordersn])['orders'][0]
-            order = super(eCommerceShop, self)._update_order_shopee(ordersn, status, update_time, detail=detail)
+        detail = detail or self._py_client_shopee().order.get_order_detail(ordersn_list=[ordersn])['orders'][0]
+        order = super(eCommerceShop, self)._update_order_shopee(ordersn, status, update_time, detail=detail)
+        if status in ['CANCELLED','COMPLETED']:
+            if status == 'CANCELLED':
+                try:
+                    order.order_line.filtered(lambda l: l.product_uom_qty != 0).write({'product_uom_qty': 0})
+                except:
+                    pass
             precision_digits = self.env['decimal.precision'].precision_get('Product Price')
             if float_compare(float(detail.get('escrow_amount')), order.amount_untaxed, precision_digits=precision_digits) != 0:
                 order.write({
                     'order_line': [(0, _, {
                         'product_id': self.env.ref('connector_ecommerce_common_account.product_product_ecommerce_expense').id,
+                        'product_uom_qty': 1,
+                        'qty_delivered': 1,
                         'price_unit': float(detail.get('escrow_amount')) - order.amount_untaxed
                     })]
                 })
-            invoice_ids = order.action_invoice_create(final=True)
-            for invoice in self.env['account.invoice'].browse(invoice_ids):
-                if invoice.state == "draft": invoice.action_invoice_open()
+            if order.invoice_status == 'to invoice':
+                order.invoice_ids.filtered(lambda i: i.state == 'draft').unlink()
+                invoice_ids = order.action_invoice_create(final=True)
+            for invoice in order.invoice_ids:
+                if invoice.state == "draft": 
+                    invoice.reference = order.client_order_ref
+                    invoice.action_invoice_open()
             return order
         else:
-            return super(eCommerceShop, self)._update_order_shopee(ordersn, status, update_time, detail=detail)
+            return order
+        #super(eCommerceShop, self)._update_order_shopee(ordersn, status, update_time, detail=detail)
 
     @api.multi
     def _sync_transaction_shopee(self, **kw):

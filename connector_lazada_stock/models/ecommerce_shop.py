@@ -29,6 +29,7 @@ class eCommerceShop(models.Model):
         order = super(eCommerceShop, self)._update_order_lazada(order, statuses=statuses, detail=detail)
         for status in statuses:
             if status in ['ready_to_ship','shipped']:
+                order.invoice_shipping_on_delivery = False
                 if not order.carrier_id: 
                     order.carrier_id = self.env['ecommerce.carrier'].search([
                         ('name','=', detail[0].get('shipment_provider','').split('Delivery: ')[-1])
@@ -38,7 +39,7 @@ class eCommerceShop(models.Model):
                         'carrier_id': order.carrier_id.id,
                         'carrier_tracking_ref': detail[0].get('tracking_code','')
                     })
-            elif status in ['returned', 'failed', 'cancel']: 
+            elif status in ['returned', 'failed', 'cancel']:
                 pick_ids = order.picking_ids.filtered(lambda r: r.picking_type_id == self.env.ref('connector_lazada_stock.stock_picking_type_lazada_out')) + order.picking_ids.filtered(lambda r: r.picking_type_id == order.warehouse_id.out_type_id)
                 for pick_id in pick_ids:
                     if pick_id.state not in ['done','cancel']: pick_id.action_cancel()
@@ -69,6 +70,8 @@ class eCommerceShop(models.Model):
                                         'lot_id': v.lot_id and v.lot_id.id
                                     }) for i,v in enumerate(moves[0].move_line_ids[l:])]
                                 })
+                for line in order.order_line:
+                    line.product_uom_qty = line.qty_delivered
 
             elif status == 'delivered':
                 pick_ids = order.picking_ids.filtered(lambda r: r.state not in ['done', 'cancel'] and r.picking_type_id in [self.env.ref('connector_lazada_stock.stock_picking_type_lazada_out'), self.env.ref('connector_lazada_stock.stock_picking_type_lazada_in')])

@@ -87,22 +87,26 @@ class eCommerceShop(models.Model):
                     order.write({
                         'order_line': [(0, _, {
                             'product_id': self.env.ref('connector_ecommerce_common_account.product_product_ecommerce_expense').id,
+                            'product_uom_qty': 1,
+                            'qty_delivered': 1,
                             'price_unit': line.amount
                         })]
                     })
-                    invoice_ids = order.action_invoice_create(final=True)
-                    for invoice in self.env['account.invoice'].browse(invoice_ids):
-                        if invoice.state == "draft": invoice.action_invoice_open()
                 elif float_compare(line.amount, order.amount_untaxed, precision_digits=precision_digits) != 0:
                     order.write({
                         'order_line': [(0, _, {
                             'product_id': self.env.ref('connector_ecommerce_common_account.product_product_ecommerce_expense').id,
+                            'product_uom_qty': 1,
+                            'qty_delivered': 1,
                             'price_unit': line.amount - order.amount_untaxed
                         })]
                     })
+                if order.invoice_status == 'to invoice':
+                    order.invoice_ids.filtered(lambda i: i.state == 'draft').unlink()
                     invoice_ids = order.action_invoice_create(final=True)
-                    for invoice in self.env['account.invoice'].browse(invoice_ids):
-                        if invoice.state == "draft": invoice.action_invoice_open()
+                for invoice in order.invoice_ids:
+                    invoice.reference = order.client_order_ref
+                    if invoice.state == "draft": invoice.action_invoice_open()
                 counterpart_aml_dicts = []
                 for ml in self.env['account.move.line'].search([
                     ('account_id','=',line.partner_id and line.partner_id.property_account_receivable_id.id or account_rcv.id),

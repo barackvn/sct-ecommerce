@@ -253,9 +253,11 @@ class eCommercerShop(models.Model):
     def _update_order_shopee(self, ordersn, status, update_time, detail=False):
         order = self.env['sale.order'].search([('ecommerce_shop_id','=',self.id),('client_order_ref','=',ordersn)])[:1] or self._new_order_shopee(ordersn, detail=detail)
         if status in ['READY_TO_SHIP','SHIPPED']:
-            if order.state in ['draft','sent']: order.action_confirm()
+            if order.state in ['draft','sent']: 
+                order.action_confirm()
         elif status == 'CANCELLED':
-            if order.state in ['draft','sent']: order.action_cancel()
+            if order.state in ['draft', 'sent']:
+                order.action_cancel()
         elif status == 'COMPLETED':
             if order.state == 'sale': order.action_done()
         return order
