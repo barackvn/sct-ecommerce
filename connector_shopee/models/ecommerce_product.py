@@ -200,12 +200,6 @@ class ShopeeProductTemplate(models.Model):
             'price': self.price,
             'stock': self.stock,
             'item_sku': self.product_tmpl_id.default_code,
-            #'variations': [{
-            #    'name': v.name or 'Default',
-            #    'stock': v.stock,
-            #    'price': v.price,
-            #    'variation_sku': v.sku,
-            #} for v in self.ecomm_product_product_ids],
             'images': [{'url': url} for url in self._upload_image_shopee(self.mapped('ecomm_product_image_ids.image_url'))],
             'attributes': [{
                 'attributes_id': a['idn'],
@@ -328,11 +322,6 @@ class ShopeeProductTemplate(models.Model):
             'description': self.description,
             'item_sku': self.sku or ' ',
             'price': self.price,
-            'variations': [{
-                'variation_id': int(v.platform_variant_idn),
-                'name': v.name,
-                'variation_sku': v.sku or ' ' 
-            } for v in self.ecomm_product_product_ids.filtered('platform_variant_idn')]
         })
         resp = self.shop_id._py_client_shopee().item.update_item(data)
         self._update_image_shopee()
