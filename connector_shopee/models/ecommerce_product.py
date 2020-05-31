@@ -154,7 +154,7 @@ class ShopeeProductTemplate(models.Model):
             'description': details.get('description',False),
             'sku': details.get('item_sku'),
             'price': details.get('price'),
-            'ecomm_product_image_ids': [(1, self.ecomm_product_image_ids[i].id, {
+            'ecomm_product_image_ids': [(2, img.id, 0) for img in self.ecomm_product_image_ids[9:]] + [(1, self.ecomm_product_image_ids[i].id, {
                 'name': 'Cover' if i==0 else 'Image {}'.format(i),
                 'sequence': i,
                 'res_model': 'ecommerce.product.template',
@@ -164,7 +164,7 @@ class ShopeeProductTemplate(models.Model):
                 'sequence': i,
                 'res_model': 'ecommerce.product.template',
                 'image_url': url,
-            }) for i, url in enumerate(details['images'])],
+                }) for i, url in enumerate(details['images'])],
             '_last_sync': datetime.now(),
         })
                 
