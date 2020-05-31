@@ -15,7 +15,7 @@ class ShopeeProductPreset(models.Model):
 #    category_id = fields.Integer(related='ecomm_categ_id.platform_categ_idn', store=True, readonly=True)
 #    category_name = fields.Char(string=_("Shopee Category"), related='ecomm_categ_id.complete_name', readonly=True)
     description = fields.Text(string=_("Description"))
-    weight = fields.Float(string=_("Package Weight (g)"))
+    weight = fields.Float(string=_("Package Weight (kg)"))
     package_length = fields.Float(string=_("Package Lenghth (cm)"))
     package_width = fields.Float(string=_("Package Width (cm)"))
     package_height = fields.Float(string=_("Package Height (cm)"))
@@ -200,7 +200,7 @@ class ShopeeProductTemplate(models.Model):
             'price': self.price,
             'stock': self.stock,
             'item_sku': self.product_tmpl_id.default_code,
-            'images': [{'url': url} for url in self._upload_image_shopee(self.mapped('ecomm_product_image_ids.image_url'))],
+            'images': [{'url': url} for url in self._upload_image_shopee(self.mapped('ecomm_product_image_ids.image_url') if url)],
             'attributes': [{
                 'attributes_id': a['idn'],
                 'value': a['value']
@@ -209,7 +209,7 @@ class ShopeeProductTemplate(models.Model):
                 'logistic_id': l.ecomm_carrier_id.logistic_idn,
                 'enabled': l.enable,
             } for l in self.carrier_ids],
-            'weight': preset.weight/1000, #g to kg
+            'weight': preset.weight,
             'package_length': preset.package_length,
             'package_width': preset.package_width,
             'package_height': preset.package_height,
