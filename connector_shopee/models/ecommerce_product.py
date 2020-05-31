@@ -359,7 +359,8 @@ class ShopeeProductTemplate(models.Model):
     def _onchange_shop_id_shopee(self):
         if self.platform_item_idn: return
         if self.shop_id:
-            self.update({'carrier_ids': [(3, o.id, _) for o in self._origin.carrier_ids] + [(0, _, {
+            self.carrier_ids = False
+            self.update({'carrier_ids': [(0, _, {
                 'ecomm_carrier_id': c.ecomm_carrier_id.id,
                 'enable': True,
             }) for c in self.shop_id.carrier_ids.filtered('enable')]})
