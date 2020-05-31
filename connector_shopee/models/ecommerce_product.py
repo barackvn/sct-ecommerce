@@ -88,13 +88,13 @@ class ShopeeProductTemplate(models.Model):
                         if l_value:
                             write_line_val.append((1, l_value.id, {
                                 'sequence': i,
-                                'ecomm_product_image_ids': [(2, img.id, 0) for img in l_value.ecomm_product_image_ids] if not t.get('images_url') else \
+                                'ecomm_product_image_ids': [(2, img.id, 0) for img in l_value.ecomm_product_image_ids] if s else \
                                 [(1, l_value.ecomm_product_image_ids[0].id, {
-                                    'image_url': t['images_url'][i]
+                                    'image_url': t.get('images_url') and t['images_url'][i]
                                 })] if l_value.ecomm_product_image_ids else [(0, 0, {
                                     'name': l_value.name,
                                     'res_model': 'ecommerce.product.template.attribute.line.value',
-                                    'image_url': t['images_url'][i]
+                                    'image_url': t.get('images_url') and t['images_url'][i]
                                 })]
                             }))
                             line_values -= l_value
@@ -106,8 +106,8 @@ class ShopeeProductTemplate(models.Model):
                                 'ecomm_product_image_ids': [(0, 0, {
                                     'name': o,
                                     'res_model': 'ecommerce.product.template.attribute.line.value',
-                                    'image_url': t['images_url'][i]
-                                })] if t.get('images_url') else False
+                                    'image_url': t.get('images_url') and t['images_url'][i]
+                                })] if not s else False
                             }))
                     if line_values:
                         write_line_val += [(2, v.id, 0) for v in line_values]
