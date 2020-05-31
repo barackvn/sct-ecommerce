@@ -90,11 +90,11 @@ class ShopeeProductTemplate(models.Model):
                                 'sequence': i,
                                 'ecomm_product_image_ids': [(2, img.id, 0) for img in l_value.ecomm_product_image_ids] if s else \
                                 [(1, l_value.ecomm_product_image_ids[0].id, {
-                                    'image_url': t.get('images_url') and t['images_url'][i]
+                                    'image_url': t.get('images_url') and t['images_url'][i] or ''
                                 })] if l_value.ecomm_product_image_ids else [(0, 0, {
                                     'name': l_value.name,
                                     'res_model': 'ecommerce.product.template.attribute.line.value',
-                                    'image_url': t.get('images_url') and t['images_url'][i]
+                                    'image_url': t.get('images_url') and t['images_url'][i] or ''
                                 })]
                             }))
                             line_values -= l_value
@@ -106,7 +106,7 @@ class ShopeeProductTemplate(models.Model):
                                 'ecomm_product_image_ids': [(0, 0, {
                                     'name': o,
                                     'res_model': 'ecommerce.product.template.attribute.line.value',
-                                    'image_url': t.get('images_url') and t['images_url'][i]
+                                    'image_url': t.get('images_url') and t['images_url'][i] or ''
                                 })] if not s else False
                             }))
                     if line_values:
@@ -129,8 +129,8 @@ class ShopeeProductTemplate(models.Model):
                             'ecomm_product_image_ids': [(0, 0, {
                                 'name': o,
                                 'res_model': 'ecommerce.product.template.attribute.line.value',
-                                'image_url': t['images_url'][i]
-                            })] if t.get('images_url') else False,
+                                'image_url': t.get('images_url') and t['images_url'][i] else ''
+                            })] if not s else False,
                         }) for i, o in enumerate(t['options'])],
                     }))
             if attr_lines: 
