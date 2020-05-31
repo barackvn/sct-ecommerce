@@ -233,6 +233,7 @@ class ShopeeProductTemplate(models.Model):
                     'options': line.line_value_ids.mapped('name')
                 } for line in self.attribute_line_ids[:2]]
                 tier_variation[0]['images_url'] = self._upload_image_shopee(self.attribute_line_ids[0].line_value_ids.mapped('ecomm_product_image_ids.image_url'))
+                _logger.info(tier_variation)
                 init_data = {
                     'item_id': resp['item_id'],
                     'tier_variation': tier_variation,
@@ -240,7 +241,7 @@ class ShopeeProductTemplate(models.Model):
                         'tier_index': v.attr_line_value_ids.mapped('sequence'),
                         'stock': v.stock,
                         'price': v.price,
-                        'variation_sku': v.sku,
+                        'variation_sku': v.sku or '',
                     } for v in self.ecomm_product_product_ids]
                 }
                 init_resp = self.shop_id._py_client_shopee().item.init_tier_variation(**init_data)
@@ -257,7 +258,7 @@ class ShopeeProductTemplate(models.Model):
         i=0
         has_urls = [[i, img] for i, img in enumerate(image_urls) if img]
         while i < len(has_urls):
-            images = self.shop_id._py_client_shopee().image.upload_image(images=[img for i, img in has_urls[i:i+9]]).get('images') or []
+            images = self.shop_id._py_client_shopee().image.upload_image(images=[img for j, img in has_urls[i:i+9]]).get('images') or []
             for j, img in enumerate(images):
                 has_urls[i+j][1] = img['shopee_image_url'] 
             i+=9
