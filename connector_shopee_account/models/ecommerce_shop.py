@@ -99,6 +99,7 @@ class eCommerceShop(models.Model):
                             'debit': amount < 0 and -amount or 0,
                             'credit': amount > 0 and amount or 0,
                         })
+                    _logger.info(counterpart_aml_dicts)
                     line.process_reconciliation(counterpart_aml_dicts=counterpart_aml_dicts)
             self._last_transaction_sync = datetime.fromtimestamp(kw.get('create_time_to'))
 

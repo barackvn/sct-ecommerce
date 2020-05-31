@@ -232,17 +232,32 @@ class ShopeeProductTemplate(models.Model):
                     'name': line.name,
                     'options': line.line_value_ids.mapped('name')
                 } for line in self.attribute_line_ids[:2]]
-                tier_variation[0]['images_url'] = self._upload_image_shopee(self.attribute_line_ids[0].line_value_ids.mapped('ecomm_product_image_ids.image_url'))
-                _logger.info(tier_variation)
+                image_urls = [val.ecomm_product_image_ids[:1].image_url for val in self.attribute_line_ids[0].line_value_ids]
+                if all(image_urls):
+                    tier_variation[0]['images_url'] = self._upload_image_shopee(image_urls)
+                    write_vals.update({
+                        'attribute_line_ids': [(1, self.attribute_line_ids[0].id, {
+                            'line_value_ids': [(1, line.id, {
+                                'ecomm_product_image_ids': [(1, line.ecomm_product_image_ids[0].id, {
+                                    'image_url': image_urls[i],
+                                })]
+                            }) for i, line in enumerate(self.attribute_line_ids[0].line_value_ids)]
+                        })],
+                    })
+                variation = []
+                for v in self.ecomm_product_product_ids:
+                    vals = {
+                        'tier_index': v.attr_line_value_ids.mapped('sequence'),
+                        'stock': v.stock,
+                        'price': v.price
+                    }
+                    if v.sku:
+                        vals['variation_sku'] = v.sku
+                    variation.append(vals)
                 init_data = {
                     'item_id': resp['item_id'],
                     'tier_variation': tier_variation,
-                    'variation': [{
-                        'tier_index': v.attr_line_value_ids.mapped('sequence'),
-                        'stock': v.stock,
-                        'price': v.price,
-                        'variation_sku': v.sku or '',
-                    } for v in self.ecomm_product_product_ids]
+                    'variation': variation,
                 }
                 init_resp = self.shop_id._py_client_shopee().item.init_tier_variation(**init_data)
                 if init_resp.get('variation_id_list'):
@@ -250,7 +265,7 @@ class ShopeeProductTemplate(models.Model):
                         'ecomm_product_product_ids': [(1, v.id, {
                             'platform_variant_idn': init_resp['variation_id_list'][i]['variation_id']
                         }) for i, v in enumerate(self.ecomm_product_product_ids)]
-                    }) 
+                    })
             self.write(write_vals)
 
     def _upload_image_shopee(self, image_urls):
