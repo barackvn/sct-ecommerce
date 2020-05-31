@@ -259,12 +259,15 @@ class ShopeeProductTemplate(models.Model):
     def _upload_image_shopee(self, image_urls):
         self.ensure_one()
         i=0
-        shopee_urls = []
-        while i < len(image_urls):
-            images = self.shop_id._py_client_shopee().image.upload_image(images=image_urls[i:i+9]).get('images') or []
-            shopee_urls += [img['shopee_image_url'] for img in images]
+        has_urls = [[i, img] for i, img in enumerate(image_urls) if img]
+        while i < len(has_urls):
+            images = self.shop_id._py_client_shopee().image.upload_image(images=[img for i, img in has_urls[i:i+9]]).get('images') or []
+            for j, img in enumerate(images):
+                has_urls[i+j][1] = img['shopee_image_url'] 
             i+=9
-        return shopee_urls
+        for i,url in has_urls:
+            image_urls[i] = url
+        return image_urls
 
     def _update_image_shopee(self):
         self.ensure_one()
