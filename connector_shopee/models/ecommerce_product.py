@@ -129,7 +129,7 @@ class ShopeeProductTemplate(models.Model):
                             'ecomm_product_image_ids': [(0, 0, {
                                 'name': o,
                                 'res_model': 'ecommerce.product.template.attribute.line.value',
-                                'image_url': t.get('images_url') and t['images_url'][i] else ''
+                                'image_url': t.get('images_url') and t['images_url'][i] or ''
                             })] if not s else False,
                         }) for i, o in enumerate(t['options'])],
                     }))
