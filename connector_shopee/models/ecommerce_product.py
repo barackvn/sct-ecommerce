@@ -200,7 +200,7 @@ class ShopeeProductTemplate(models.Model):
             'price': self.price,
             'stock': self.stock,
             'item_sku': self.product_tmpl_id.default_code,
-            'images': [{'url': url} for url in self._upload_image_shopee(self.mapped('ecomm_product_image_ids.image_url') if url)],
+            'images': [{'url': url} for url in self._upload_image_shopee(self.mapped('ecomm_product_image_ids.image_url')) if url],
             'attributes': [{
                 'attributes_id': a['idn'],
                 'value': a['value']
