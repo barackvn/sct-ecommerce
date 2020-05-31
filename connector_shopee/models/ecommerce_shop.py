@@ -114,69 +114,17 @@ class eCommercerShop(models.Model):
         for item in resp['items']:
             if item['status'] == 'DELETED': 
                 continue
-            details = self._py_client_shopee().item.get_item_detail(item_id=item.get('item_id',0)).get('item',{})
             tmpl = model.search([
                 ('shop_id', '=', self.id),
                 ('platform_item_idn','=', str(item.get('item_id')))
                 ])
             if tmpl:
-                for v in details.get("variations", []):
-                    p = tmpl.ecomm_product_product_ids.filtered(lambda p: p.platform_variant_idn == str(v.get('variation_id')))
-                    if p:
-                        p.write({
-                            'name': v.get('name'),
-                            'sku': v.get('variation_sku'),
-                            'price': v.get('price'),
-                        })
-                    else:
-                        tmpl.write({
-                            'ecomm_product_product_ids': [(0,_,{
-                                'name': v.get('name'),
-                                'platform_variant_idn': str(v.get('variation_id')),
-                                'sku': v.get('variation_sku'),
-                                'price': v.get('price'),
-                            })]
-                        })
-                l_id = len(tmpl.ecomm_product_image_ids)
-                l_i = len(details.get("images",[]))
-                tmpl.write({
-                    'name': details.get('name',False),
-                    'description': details.get('description',False),
-                    'platform_item_idn': str(item.get('item_id')),
-                    'sku': item.get('item_sku'),
-                    'price': item.get('price'),
-                    'ecomm_product_image_ids': [(1, tmpl.ecomm_product_image_ids[i].id, {
-                        'sequence': i,
-                        'res_model': 'ecommerce.product.template',
-                        'image_url': i < l_i and details['images'][i] or False
-                    }) if i < l_id else (0, _, {
-                        'sequence': i,
-                        'res_model': 'ecommerce.product.template',
-                        'image_url': details['images'][i]
-                    }) for i in range(max(l_id,l_i))],
-                    '_last_sync': datetime.now(),
-                })
+                tmpl._sync_info_shopee()
             else:
                 model.create({
-                    'name': details.get('name',False),
-                    'description': details.get('description',False),
                     'shop_id': self.id,
                     'platform_item_idn': str(item.get('item_id')),
-                    'sku': item.get('item_sku'),
-                    'price': item.get('price'),
-                    '_last_sync': datetime.now(),
-                    'ecomm_product_image_ids': [(0, _, {
-                        'sequence': i,
-                        'res_model': 'ecommerce.product.template',
-                        'image_url': url
-                    }) for i, url in enumerate(details.get("images",[]))],
-                    'ecomm_product_product_ids': [(0, _, {
-                        'name': v.get('name'),
-                        'platform_variant_idn': str(v.get('variation_id')),
-                        'sku': v.get('variation_sku'),
-                        'price': v.get('price'),
-                    }) for v in details.get("variations", [])],
-                })
+                })._sync_info_shopee()
         if resp.get('more'):
             kw['pagination_offset'] += kw['pagination_entries_per_page']
             self._sync_product_shopee(**kw)
@@ -213,7 +161,7 @@ class eCommercerShop(models.Model):
 
         partner_id = self.env['res.partner'].search([
             ('type','!=','delivery'),
-            ('phone','=',partner_vals['phone'])
+            ('ref','=',partner_vals['ref'])
             ])[:1] or self.env['res.partner'].create(partner_vals)
 
         shipping_ids = partner_id.child_ids.filtered(lambda child: all(child[field].id == val if isinstance(child[field],models.Model) else child[field].casefold() == val.casefold() for field, val in shipping_address.items()))

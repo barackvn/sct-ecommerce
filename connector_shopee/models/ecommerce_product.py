@@ -1,6 +1,7 @@
 #-*- coding: utf-8 -*-
 
 from odoo import models, fields, api, _, exceptions
+from datetime import datetime
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -68,6 +69,105 @@ class ShopeeProductPreset(models.Model):
 class ShopeeProductTemplate(models.Model):
     _inherit = 'ecommerce.product.template'
 
+    def _sync_info_shopee(self):
+        self.ensure_one()
+        if not self.platform_item_idn: 
+            return
+        details = self.shop_id._py_client_shopee().item.get_item_detail(item_id=int(self.platform_item_idn)).get('item',{})
+        if details.get('has_variation'):
+            vari_details = self.shop_id._py_client_shopee().item.get_variations(item_id=int(self.platform_item_idn))
+            write_attr_val = []
+            attr_lines = self.attribute_line_ids
+            for s, t in enumerate(vari_details['tier_variation']):
+                line = attr_lines.filtered(lambda l: l.name.lower() == t['name'].lower())[:1]
+                if line:
+                    write_line_val = []
+                    line_values = line.line_value_ids
+                    for i, o in enumerate(t['options']):
+                        l_value = line_values.filtered(lambda lv: lv.name.lower() == o.lower())[:1]
+                        if l_value:
+                            write_line_val.append((1, l_value.id, {
+                                'sequence': i,
+                                'ecomm_product_image_ids': [(2, img.id, 0) for img in l_value.ecomm_product_image_ids] if not t.get('images_url') else \
+                                [(1, l_value.ecomm_product_image_ids[0].id, {
+                                    'image_url': t['images_url'][i]
+                                })] if l_value.ecomm_product_image_ids else [(0, 0, {
+                                    'name': l_value.name,
+                                    'res_model': 'ecommerce.product.template.attribute.line.value',
+                                    'image_url': t['images_url'][i]
+                                })]
+                            }))
+                            line_values -= l_value
+                        else:
+                            write_line_val.append((0, 0, {
+                                'value_id': line.attr_id.value_ids.filtered(lambda v: v.name.lower() == o.lower())[:1].id,
+                                'name': o,
+                                'sequence': i,
+                                'ecomm_product_image_ids': [(0, 0, {
+                                    'name': o,
+                                    'res_model': 'ecommerce.product.template.attribute.line.value',
+                                    'image_url': t['images_url'][i]
+                                })] if t.get('images_url') else False
+                            }))
+                    if line_values:
+                        write_line_val += [(2, v.id, 0) for v in line_values]
+                    write_attr_val.append((1, line.id, {
+                        'sequence': s,
+                        'line_value_ids': write_line_val
+                    }))
+                    attr_lines -= line
+                else:
+                    attr_id = self.env['product.attribute'].search([('create_variant','=','always'),('name','=ilike',t['name'])], limit=1)
+                    write_attr_val.append((0, 0, {
+                        'sequence': s,
+                        'attr_id': attr_id.id,
+                        'name': t['name'],
+                        'line_value_ids': [(0, 0, {
+                            'value_id': attr_id and attr_id.filtered(lambda v: v.name.lower() == o.lower())[:1].id,
+                            'name': o,
+                            'sequence': i,
+                            'ecomm_product_image_ids': [(0, 0, {
+                                'name': o,
+                                'res_model': 'ecommerce.product.template.attribute.line.value',
+                                'image_url': t['images_url'][i]
+                            })] if t.get('images_url') else False,
+                        }) for i, o in enumerate(t['options'])],
+                    }))
+            if attr_lines: 
+                write_attr_val += [(2, l.id, 0) for l in attr_lines]
+            self.write({'attribute_line_ids': write_attr_val})
+            updated_vals = self.update_variant_ids().get('value')
+            if updated_vals:
+                self.write(updated_vals)
+            #product variant updated
+            for p, v in zip(self.ecomm_product_product_ids, details.get("variations", [])):
+                p.write({
+                    'platform_variant_idn': str(v.get('variation_id')),
+                    'sku': v.get('variation_sku'),
+                    'price': v.get('price'),
+                })
+                
+        l_id = len(self.ecomm_product_image_ids)
+        details['images'] += ([""]*(9-len(details.get("images",[]))))
+        self.write({
+            'name': details.get('name',False),
+            'description': details.get('description',False),
+            'sku': details.get('item_sku'),
+            'price': details.get('price'),
+            'ecomm_product_image_ids': [(1, self.ecomm_product_image_ids[i].id, {
+                'name': 'Cover' if i==0 else 'Image {}'.format(i),
+                'sequence': i,
+                'res_model': 'ecommerce.product.template',
+                'image_url': url,
+            }) if i < l_id else (0, _, {
+                'name': 'Cover' if i==0 else 'Image {}'.format(i),
+                'sequence': i,
+                'res_model': 'ecommerce.product.template',
+                'image_url': url,
+            }) for i, url in enumerate(details['images'])],
+            '_last_sync': datetime.now(),
+        })
+                
     def _update_stock_shopee(self):
         no_variant_items = self.filtered(lambda t: not t.ecomm_product_product_ids)
         has_variant_items = self - no_variant_items
@@ -100,12 +200,12 @@ class ShopeeProductTemplate(models.Model):
             'price': self.price,
             'stock': self.stock,
             'item_sku': self.product_tmpl_id.default_code,
-            'variations': [{
-                'name': v.name or 'Default',
-                'stock': v.stock,
-                'price': v.price,
-                'variation_sku': v.sku,
-            } for v in self.ecomm_product_product_ids],
+            #'variations': [{
+            #    'name': v.name or 'Default',
+            #    'stock': v.stock,
+            #    'price': v.price,
+            #    'variation_sku': v.sku,
+            #} for v in self.ecomm_product_product_ids],
             'images': [{'url': url} for url in self._upload_image_shopee(self.mapped('ecomm_product_image_ids.image_url'))],
             'attributes': [{
                 'attributes_id': a['idn'],
@@ -127,20 +227,50 @@ class ShopeeProductTemplate(models.Model):
         })
         resp = self.shop_id._py_client_shopee().item.add({k : v for k,v in data.items() if v})
         if resp.get('item_id'):
-            self.write({
+            write_vals = {
                 'platform_item_idn': resp['item_id'],
                 'status': resp['item']['status'],
-                'ecomm_product_product_ids': [(1, v[0], {
-                    'platform_variant_idn': v[1]['variation_id']
-                }) for v in zip(self.ecomm_product_product_ids.sorted('sku').ids, sorted(resp['item']['variations'], key=lambda v: v['variation_sku']))]
-            })
-        _logger.info(resp)
-
+            }
+            if self.attribute_line_ids:
+                if len(self.attribute_line_ids) > 2:
+                    raise exceptions.UserError('Tier variation should be under 2 level')
+                line0 = self.attribute_line_ids[0]
+                line1 = self.attribute_line_ids[1]
+                init_data = {
+                    'item_id': resp['item_id'],
+                    'tier_variation': [{
+                        'name': line0.name,
+                        'options': line0.line_value_ids.mapped('name'),
+                        'images_url': self._upload_image_shopee(line0.line_value_ids.mapped('ecomm_product_image_ids.image_url'))
+                    }, {
+                        'name': line1.name,
+                        'options': line1.line_value_ids.mapped('name')
+                    }],
+                    'variation': [{
+                        'tier_index': v.attr_line_value_ids.mapped('sequence'),
+                        'stock': v.stock,
+                        'price': v.price,
+                        'variation_sku': v.sku,
+                    } for v in self.ecomm_product_product_ids]
+                }
+                init_resp = self.shop_id._py_client_shopee().item.init_tier_variation(**init_data)
+                if init_resp.get('variation_id_list'):
+                    write_vals.update({
+                        'ecomm_product_product_ids': [(1, v.id, {
+                            'platform_variant_idn': init_resp['variation_id_list'][i]['variation_id']
+                        }) for i, v in enumerate(self.ecomm_product_product_ids)]
+                    }) 
+            self.write(write_vals)
 
     def _upload_image_shopee(self, image_urls):
         self.ensure_one()
-        images = image_urls and self.shop_id._py_client_shopee().image.upload_image(images=image_urls).get('images') or []
-        return [i['shopee_image_url'] for i in images]
+        i=0
+        shopee_urls = []
+        while i < len(image_urls):
+            images = self.shop_id._py_client_shopee().image.upload_image(images=image_urls[i:i+9]).get('images') or []
+            shopee_urls += [img['shopee_image_url'] for img in images]
+            i+=9
+        return shopee_urls
 
     def _update_image_shopee(self):
         self.ensure_one()
@@ -159,15 +289,24 @@ class ShopeeProductTemplate(models.Model):
         self.ensure_one()
         self.calculate_stock()
         self.ecomm_product_product_ids.calculate_stock()
-        new_v = self.ecomm_product_product_ids.filtered(lambda r: not r.platform_variant_idn and r.product_product_id)
+        new_v = self.ecomm_product_product_ids.filtered(lambda r: not r.platform_variant_idn)
         o = len(self.ecomm_product_product_ids - new_v)
         if new_v:
-            tier_variation = [{
-                'name': ', '.join(self.mapped('product_tmpl_id.attribute_line_ids.attribute_id.name')) or 'Variation',
-                'options': [v.name or 'Default' for v in self.ecomm_product_product_ids],
+            if len(self.attribute_line_ids) > 2:
+                raise exceptions.UserError('Tier variation should be under 2 level')
+            line0 = self.attribute_line_ids[0]
+            line1 = self.attribute_line_ids[1]
+            tier_variation =[{
+                'name': line0.name,
+                'options': line0.line_value_ids.mapped('name'),
+                'images_url': self._upload_image_shopee(line0.line_value_ids.mapped('ecomm_product_image_ids.image_url'))
+            }, {
+                'name': line1.name,
+                'options': line1.line_value_ids.mapped('name')
             }]
+
             add_variant_data = [{
-                'tier_index': [o+i],
+                'tier_index': attr_line_value_ids.mapped('sequence'),
                 'stock': v.stock,
                 'price': v.price,
                 'variation_sku': v.sku,
@@ -181,7 +320,7 @@ class ShopeeProductTemplate(models.Model):
                 list_resp = self.shop_id._py_client_shopee().item.update_tier_variation_list(item_id=int(self.platform_item_idn), tier_variation=tier_variation)
                 resp = self.shop_id._py_client_shopee().item.add_tier_variation(item_id=int(self.platform_item_idn), variation=add_variant_data)
             if resp.get('item_id'):
-                for i, v in enumerate(self.ecomm_product_product_ids):
+                for i, v in enumerate(new_v):
                     v.platform_variant_idn = resp['variation_id_list'][i]['variation_id']
         data.update({
             'item_id':  int(self.platform_item_idn),
@@ -232,6 +371,18 @@ class ShopeeProductTemplate(models.Model):
                 'ecomm_carrier_id': c.ecomm_carrier_id.id,
                 'enable': True,
             }) for c in self.shop_id.carrier_ids.filtered('enable')]})
+            if not self.ecomm_product_image_ids:
+                self.update({
+                    'ecomm_product_image_ids': [(0, 0, {
+                        'res_model': 'ecommerce.product.template',
+                        'name': 'Cover',
+                        'sequence': 0
+                    })] + [(0, 0, {
+                        'res_model': 'ecommerce.product.template',
+                        'name': 'Image {}'.format(i),
+                        'sequence': i
+                    }) for i in range(1,9)]
+                })
 
     def _load_preset_shopee(self):
         self.ensure_one()

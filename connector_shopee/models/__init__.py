@@ -5,3 +5,4 @@ from . import ecommerce_shop
 from . import ecommerce_product
 from . import product
 from . import ecommerce_category_selector
+from . import ecommerce_product_attribute

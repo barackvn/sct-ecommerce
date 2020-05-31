@@ -6,7 +6,7 @@ from odoo.exceptions import UserError
 from odoo.tools import pycompat
 import datetime
 from werkzeug import urls
-import functools
+import functools, itertools
 
 import dateutil.relativedelta as relativedelta
 import logging
@@ -161,23 +161,25 @@ class eCommerceProductTemplate(models.Model):
     t_description = fields.Text()
     sku = fields.Char()
     shop_id = fields.Many2one('ecommerce.shop', required=True)
-    platform_id = fields.Many2one('ecommerce.platform', related="shop_id.platform_id", store=True)
-    platform_item_idn = fields.Char(string=_("ID Number"),index=True)
+    platform_id = fields.Many2one('ecommerce.platform', related="shop_id.platform_id", store=True, copy=False)
+    platform_item_idn = fields.Char(string=_("ID Number"),index=True, copy=False)
     product_tmpl_id = fields.Many2one('product.template')
     product_product_id = fields.Many2one('product.product', string=_("Single Variant"))
-    ecomm_product_product_ids = fields.One2many('ecommerce.product.product', 'ecomm_product_tmpl_id', string=_("Variants"))
+    ecomm_product_product_ids = fields.One2many('ecommerce.product.product', 'ecomm_product_tmpl_id', string=_("Variants"), copy=True, store=True)
     carrier_ids = fields.One2many('ecommerce.product.carrier', 'ecomm_product_tmpl_id', auto_join=True, string=_('Delivery Methods'))
     #add_image_ids = fields.One2many('ir.attachment', 'res_id',
     #        domain= lambda self: [('res_model', '=', self._name),('mimetype', 'ilike', 'image')],
     #        string='Add Images')
     ecomm_product_image_ids = fields.One2many('ecommerce.product.image', 'res_id', string=_("Images"),
-            auto_join=True, domain = [('res_model','=','ecommerce.product.template')])
+            auto_join=True, domain = [('res_model','=','ecommerce.product.template')], copy=True)
+    ecomm_variant_image_ids = fields.One2many('ecommerce.product.image', string="Variant Images", compute='compute_variant_image_ids', inverse='inverse_variant_image_ids')
     auto_update_stock = fields.Boolean()
     has_preset = fields.Boolean(compute='compute_has_preset')
     stock = fields.Integer(readonly=True)
     price = fields.Float()
     _last_info_update = fields.Datetime(string=_("Info Updated On"))
     _last_sync = fields.Datetime(strong=_("Last Sync"))
+    attribute_line_ids = fields.One2many('ecommerce.product.template.attribute.line', 'ecomm_product_tmpl_id', 'Variation Attributes', copy=True)
     #_sync_res = fields.Selection([('fail',_("Fail")),('success',_("Success"))], string=_("Sync Result"))
     t_product_tmpl_id = fields.Integer()
 
@@ -282,7 +284,7 @@ class eCommerceProductTemplate(models.Model):
 
     def update_info(self, context=None, data={}, image=False):
         for p in self:
-            if image: getattr(p, '_update_image_{}'.format(p.platform_id.platform))()
+            #if image: getattr(p, '_update_image_{}'.format(p.platform_id.platform))()
             getattr(p, "_update_info_{}".format(p.platform_id.platform))(data=data)
 
     def add_to_shop(self, context=None, data=None):
@@ -299,6 +301,14 @@ class eCommerceProductTemplate(models.Model):
     def cron_update_stock(self):
         for shop in self.env['ecommerce.shop'].search([('auto_sync','=',True)]):
             self.env['ecommerce.product.template'].search([('shop_id','=', shop.id),('auto_update_stock','=',True)]).update_stock()
+
+    def sync_and_match(self):
+        self.sync_info()
+        self.match_sku()
+
+    def sync_info(self):
+        for p in self:
+            getattr(p, '_sync_info_{}'.format(p.platform_id.platform))()
 
     def match_sku(self):
         for item in self:
@@ -348,32 +358,32 @@ class eCommerceProductTemplate(models.Model):
             if item.platform_item_idn and item.product_tmpl_id and not item.product_tmpl_id['{}_product_preset_id'.format(item.platform_id.platform)]:
                 item.make_preset()
 
-    @api.onchange('product_tmpl_id', 'product_product_id', 'ecomm_product_product_ids')
-    def onchange_product_id(self):
-        if self.platform_id:
-            getattr(self, '_onchange_product_id_{}'.format(self.platform_id.platform))()
-        elif self._context.get('platform'):
-            getattr(self, '_onchange_product_id_{}'.format(self._context.get('platform')))()
+#    @api.onchange('product_tmpl_id', 'product_product_id', 'ecomm_product_product_ids')
+#    def onchange_product_id(self):
+#        if self.platform_id:
+#            getattr(self, '_onchange_product_id_{}'.format(self.platform_id.platform))()
+#        elif self._context.get('platform'):
+#            getattr(self, '_onchange_product_id_{}'.format(self._context.get('platform')))()
 
     @api.onchange('shop_id')
     def onchange_shop_id(self):
         if self.shop_id:
             getattr(self, '_onchange_shop_id_{}'.format(self.platform_id.platform))()
     
-    @api.onchange()
-    def load_demo_value(self):
-        self.ensure_one()
-        preset = self.product_tmpl_id and self.product_tmpl_id.mapped('{}_product_preset_id'.format(self.platform_id.platform))
-        if not preset: return
-        
-        return {'value':{
-            'name': self.ecomm_product_preset_id.name,
-            'description': self.ecomm_product_preset_id.description,
-            'ecomm_product_image_ids': [(5, _,_)] + [(0, _,{
-                'res_model': 'ecommerce.product.template',
-                'image_url': i.image_url,
-            }) for i in preset.ecomm_product_image_ids]
-        }}
+    #@api.onchange()
+    #def load_demo_value(self):
+    #    self.ensure_one()
+    #    preset = self.product_tmpl_id and self.product_tmpl_id.mapped('{}_product_preset_id'.format(self.platform_id.platform))
+    #    if not preset: return
+    #    
+    #    return {'value':{
+    #        'name': self.ecomm_product_preset_id.name,
+    #        'description': self.ecomm_product_preset_id.description,
+    #        'ecomm_product_image_ids': [(5, _,_)] + [(0, _,{
+    #            'res_model': 'ecommerce.product.template',
+    #            'image_url': i.image_url,
+    #        }) for i in preset.ecomm_product_image_ids]
+    #    }}
 
     @api.depends('product_tmpl_id', 'platform_id')
     def compute_has_preset(self):
@@ -401,9 +411,53 @@ class eCommerceProductTemplate(models.Model):
             else:
                 p.stock = default
 
+    @api.onchange('attribute_line_ids')
+    def update_variant_ids(self):
+        Product = self.env['ecommerce.product.product']
+        variants_to_create = []
+        variants_to_unlink = self.ecomm_product_product_ids
+        
+        value_list = [line.line_value_ids for line in self.attribute_line_ids]
+        if any(value_list):
+            combinations = itertools.product(*[line.line_value_ids for line in self.attribute_line_ids])
+            exist_variants = {v.attr_line_value_ids: v for v in self.ecomm_product_product_ids}
+
+            for comb_tuple in combinations:
+                comb = self.env['ecommerce.product.template.attribute.line.value'].concat(*comb_tuple)
+                if comb in exist_variants:
+                    variants_to_unlink -= exist_variants[comb]
+                else:
+                    variants_to_create.append({
+                        'attr_line_value_ids': [(6, 0, comb.ids)],
+                        'name': ', '.join(comb.mapped('name'))
+                    })
+        if len(variants_to_create) > 1000:
+            raise UserError(_('The number of variants to generate is too high. '))
+        triplets = []
+        if variants_to_unlink:
+            triplets += [(2, v.id, 0) for v in variants_to_unlink]
+        if variants_to_create:
+            triplets += [(0, 0, vals) for vals in variants_to_create]
+        if triplets:
+            return {'value': {
+                'ecomm_product_product_ids': triplets
+            }}
+        else: 
+            return {}
+
+
+    @api.depends('attribute_line_ids.line_value_ids.ecomm_product_image_ids')
+    def compute_variant_image_ids(self):
+        for rec in self:
+            rec.ecomm_variant_image_ids = rec.mapped('attribute_line_ids.line_value_ids.ecomm_product_image_ids')
+
+    def inverse_variant_image_ids(self):
+        return
+
 class eCommerceProductProduct(models.Model):
     _name = 'ecommerce.product.product'
     _description = "eCommerce Product Variant"
+    _order = 'ecomm_product_tmpl_id, index'
 
     name = fields.Char()
     platform_variant_idn = fields.Char(index=True, readonly=True)
@@ -412,10 +466,20 @@ class eCommerceProductProduct(models.Model):
     sku = fields.Char()
     price = fields.Float()
     stock = fields.Integer(readonly=True)
+    attr_line_value_ids = fields.Many2many('ecommerce.product.template.attribute.line.value', relation='ecomm_product_ecomm_tmpl_attr_line_value_rel')
+    index = fields.Char(compute='compute_index', store=True)
+
+
+    @api.depends('attr_line_value_ids')
+    def compute_index(self):
+        for p in self:
+            p.index = '[{}]'.format(', '.join(p.attr_line_value_ids.mapped(lambda r: str(r.sequence))))
+
 
     @api.onchange('product_product_id')
     def onchange_product_product_id(self):
         if not self.platform_variant_idn: self.sku = self.product_product_id.default_code
+        if not self.price: self.price = self.product_product_id.lst_price
 
     def calculate_stock(self, default=1000):
         for v in self:
@@ -435,14 +499,17 @@ class eCommerceProductImage(models.Model):
     sequence = fields.Integer()
     name = fields.Char('Name')
     image_id = fields.Many2one('ir.attachment','Image Attachment')
-    image_url = fields.Char('Image Url', compute='compute_image_url', inverse='inverse_image_url', store=True)
+    image_url = fields.Char('Image Url', compute='compute_image_url', inverse='inverse_image_url', store=True, copy=True)
     image_url_view = fields.Char('Image', related='image_url')
     image = fields.Binary('Image', attachment=True)
     res_id = fields.Integer()
     res_model = fields.Char()
     res_field = fields.Char()
+    #src_id = fields.Integer()
+    #src_model = fields.Char()
 
     #ecomm_product_tmpl_id = fields.Many2one('ecommerce.product.template','Related Product')
+
 
     @api.depends('image')
     def compute_image_url(self):

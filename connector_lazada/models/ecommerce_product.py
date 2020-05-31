@@ -70,6 +70,9 @@ class LazadaProductTemplate(models.Model):
     def _make_preset_lazada(self):
         pass
 
+    def _sync_info_lazada(self):
+        pass
+
     def _update_info_lazada(self,data={}):
         self.ensure_one()
         data.update({
@@ -100,7 +103,18 @@ class LazadaProductTemplate(models.Model):
             self.update({'ecomm_product_product_ids': [(3, e.id, _) for e in self._origin.ecomm_product_product_ids]})
 
     def _onchange_shop_id_lazada(self):
-        return
+        if self.shop_id and not self.ecomm_product_image_ids and not self.attribute_line_ids:
+            self.update({
+                'ecomm_product_image_ids': [(0, 0, {
+                    'res_model': 'ecommerce.product.template',
+                    'name': 'Cover',
+                    'sequence': 0
+                })] + [(0, 0, {
+                    'res_model': 'ecommerce.product.template',
+                    'name': 'Image {}'.format(i),
+                    'sequence': i
+                }) for i in range(1,7)]
+            })
 
 class LazadaProductProduct(models.Model):
     _inherit = 'ecommerce.product.product'

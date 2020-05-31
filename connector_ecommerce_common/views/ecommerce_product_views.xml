@@ -8,8 +8,9 @@
             <field name="arch" type="xml">
                 <form string="eCommerce Product">
                     <header>
+                        <button name="sync_and_match" type="object" class="btn-primary" string="Sync and Match" attrs="{'invisible': [('platform_item_idn','=', False)]}"/>
                         <button name="%(connector_ecommerce_common.ecomm_category_selector_view_action)d" string="Create Preset Info" type="action" context="{'default_platform_id': platform_id, 'default_product_tmpl_id': product_tmpl_id}" attrs="{'invisible': [('has_preset','=', True)]}"/>
-                        <button name="load_preset" string="Preset Description and Image" type='object' attrs="{'invisible': [('has_preset','=', False)]}"/>
+                        <button name="load_preset" string="Preset Name and Description" type='object' attrs="{'invisible': [('has_preset','=', False)]}"/>
                         <button name="preview" type="object" class="btn-info" string="Preview"/>
                         <button string="Update Info to Shop" name="update_info" class="btn-warning" type="object" attrs="{'invisible': [('platform_item_idn','in', [False,''])]}"/>
                         <button string="Add to Shop" name="add_to_shop" class="btn-warning" type="object" attrs="{'invisible': [('platform_item_idn','not in', [False,''])]}"/>
@@ -20,7 +21,7 @@
                         <field name="t_product_tmpl_id" invisible="1"/>
                         <group col="4">
                             <field name="shop_id" domain="[('platform_id.platform','=?',context.get('platform'))]"/>
-                            <field name="platform_item_idn" readonly="1"/>
+                            <field name="platform_item_idn"/>
                             <field name="product_tmpl_id"/>
                             <field name="product_product_id"/>
                             <field name="sku"/>
@@ -32,19 +33,48 @@
                             <field name="name"/>
                             <field name="description"/>
                         </group>
-                        <group name="images" string="Images">
-                            <field name="ecomm_product_image_ids" class="o_website_sale_image_list" context="{'default_name': name, 'default_res_id': id, 'default_res_model': 'ecommerce.product.template'}" nolabel="1">
+                        <group name="images" string="Images" col="1">
+                            <field name="ecomm_product_image_ids" class="o_website_sale_image_list" context="{'default_name': name, 'default_res_model': 'ecommerce.product.template'}" nolabel="1">
                                 <kanban string="Product Images" class="o_attachments_previews">
                                     <field name="id"/>
+                                    <field name="sequence"/>
                                     <field name="name"/>
+                                    <field name="image"/>
                                     <field name="image_url"/>
+                                    <field name="res_model"/>
                                     <templates>
                                         <t t-name="kanban-box">
                                             <div class="o_attachment oe_kanban_global_click o_website_sale_image_card">
                                                 <div class="o_attachment_wrap">
                                                     <div class="o_image_box">
-                                                        <div class="o_attachment_image" t-attf-style="background-image:url({{record.image_url.value}});"/>
-                                                        <div t-attf-class="o_image_overlay" t-att-title="record.name.value"/>
+                                                        <div class="o_attachment_image" t-attf-style="background-image:url({{record.image_url.value or 'data:image/png;base64,' + record.image.raw_value}});"/>
+                                                        <div t-attf-class="o_image_overlay" t-att-title="record.name.value">
+                                                        </div>
+                                                        <div class="o_website_sale_image_card_title" t-att-title="record.name.value">
+                                                            <field name="name"/>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </t>
+                                    </templates>
+                                </kanban>
+                            </field>
+                            <field name="ecomm_variant_image_ids" class="o_website_sale_image_list" nolabel="1">
+                                <kanban string="Variant Images" class="o_attachments_previews" limit="8" create="0" delete="0">
+                                    <field name="id"/>
+                                    <field name="name"/>
+                                    <field name="image"/>
+                                    <field name="image_url"/>
+                                    <field name="res_model"/>
+                                    <templates>
+                                        <t t-name="kanban-box">
+                                            <div class="o_attachment oe_kanban_global_click o_website_sale_image_card">
+                                                <div class="o_attachment_wrap">
+                                                    <div class="o_image_box">
+                                                        <div class="o_attachment_image" t-attf-style="background-image:url({{record.image_url.value or 'data:image/png;base64,' + record.image.raw_value}});"/>
+                                                        <div t-attf-class="o_image_overlay" t-att-title="record.name.value">
+                                                        </div>
                                                         <div class="o_website_sale_image_card_title" t-att-title="record.name.value">
                                                             <field name="name"/>
                                                         </div>
@@ -58,9 +88,39 @@
                         </group>
                         <notebook>
                             <page string="Variants" name="variant">
+                                <group>
+                                    <field name="attribute_line_ids">
+                                        <tree>
+                                            <field name="sequence" widget="handle" invisible="1"/>
+                                            <!--field name="attr_id" attrs="{'required': [('name','=',False)]}"/-->
+                                            <field name="name"/>
+                                            <field name="line_value_ids"/>
+                                        </tree>
+                                        <form>
+                                            <sheet>
+                                                <group>
+                                                    <field name="attr_id" attrs="{'required': [('name','=',False)]}"/>
+                                                    <field name="name"/>
+                                                </group>
+                                                <field name="line_value_ids" nolabel="1">
+                                                    <tree editable='bottom'>
+                                                        <field name="sequence" widget="handle"/>
+                                                        <field name="attr_id" invisible="1"/>
+                                                        <field name="attr_line_id" invisible="1"/>
+                                                        <field name="value_id" attrs="{'required': [('name','=',False)]}"/>
+                                                        <field name="name"/>
+                                                        <field name="ecomm_product_image_ids" invisible="1"/>
+                                                    </tree>
+                                                </field>
+                                            </sheet>
+                                        </form>
+                                    </field>
+                                </group>
+                                <label for="ecomm_product_product_ids" string="Variations"/>
                                 <field name="ecomm_product_product_ids" nolabel="1">
-                                    <tree editable='bottom'>
-                                        <field name="name"/>
+                                    <tree editable='bottom' create="0" delete="0">
+                                        <field name="index" invisible="1"/>
+                                        <field name="attr_line_value_ids" widget="many2many_tags"/>
                                         <!--field name="platform_variant_idn"/-->
                                         <field name="sku"/>
                                         <field name="price"/>
