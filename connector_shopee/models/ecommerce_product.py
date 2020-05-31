@@ -228,18 +228,14 @@ class ShopeeProductTemplate(models.Model):
             if self.attribute_line_ids:
                 if len(self.attribute_line_ids) > 2:
                     raise exceptions.UserError('Tier variation should be under 2 level')
-                line0 = self.attribute_line_ids[0]
-                line1 = self.attribute_line_ids[1]
+                tier_variation = [{
+                    'name': line.name,
+                    'options': line.line_value_ids.mapped('name')
+                } for line in self.attribute_line_ids[:2]]
+                tier_variation[0]['images_url'] = self._upload_image_shopee(self.attribute_line_ids[0].line_value_ids.mapped('ecomm_product_image_ids.image_url'))
                 init_data = {
                     'item_id': resp['item_id'],
-                    'tier_variation': [{
-                        'name': line0.name,
-                        'options': line0.line_value_ids.mapped('name'),
-                        'images_url': self._upload_image_shopee(line0.line_value_ids.mapped('ecomm_product_image_ids.image_url'))
-                    }, {
-                        'name': line1.name,
-                        'options': line1.line_value_ids.mapped('name')
-                    }],
+                    'tier_variation': tier_variation,
                     'variation': [{
                         'tier_index': v.attr_line_value_ids.mapped('sequence'),
                         'stock': v.stock,
@@ -291,17 +287,11 @@ class ShopeeProductTemplate(models.Model):
         if new_v:
             if len(self.attribute_line_ids) > 2:
                 raise exceptions.UserError('Tier variation should be under 2 level')
-            line0 = self.attribute_line_ids[0]
-            line1 = self.attribute_line_ids[1]
-            tier_variation =[{
-                'name': line0.name,
-                'options': line0.line_value_ids.mapped('name'),
-                'images_url': self._upload_image_shopee(line0.line_value_ids.mapped('ecomm_product_image_ids.image_url'))
-            }, {
-                'name': line1.name,
-                'options': line1.line_value_ids.mapped('name')
-            }]
-
+            tier_variation = [{
+                'name': line.name,
+                'options': line.line_value_ids.mapped('name')
+            } for line in self.attribute_line_ids[:2]]
+            tier_variation[0]['images_url'] = self._upload_image_shopee(self.attribute_line_ids[0].line_value_ids.mapped('ecomm_product_image_ids.image_url'))
             add_variant_data = [{
                 'tier_index': attr_line_value_ids.mapped('sequence'),
                 'stock': v.stock,
