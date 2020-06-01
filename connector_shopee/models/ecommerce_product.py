@@ -283,8 +283,8 @@ class ShopeeProductTemplate(models.Model):
 
     def _update_image_shopee(self):
         self.ensure_one()
-        image_urls = self._upload_image_shopee(self.mapped('ecomm_product_image_ids.image_url'))
-        if image_urls and image_urls != self.mapped('ecomm_product_image_ids.image_url'):
+        image_urls = self._upload_image_shopee([img.image_url for img in self.ecomm_product_image_ids if img.image_url])
+        if image_urls:
             resp = self.shop_id._py_client_shopee().item.update_img(item_id=int(self.platform_item_idn), images=image_urls)
             if resp.get('images'):
                 pairs = zip(self.ecomm_product_image_ids.ids, resp.get('images'))
