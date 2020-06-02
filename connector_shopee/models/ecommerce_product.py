@@ -331,6 +331,10 @@ class ShopeeProductTemplate(models.Model):
             'description': self.description,
             'item_sku': self.sku or ' ',
             'price': self.price,
+            'variations': [{
+                'variation_id': int(v.platform_variant_idn),
+                'variation_sku': v.sku,
+            } for v in self.ecomm_product_product_ids]
         })
         resp = self.shop_id._py_client_shopee().item.update_item(data)
         self._update_image_shopee()
