@@ -337,7 +337,8 @@ class ShopeeProductTemplate(models.Model):
             } for v in self.ecomm_product_product_ids]
         })
         resp = self.shop_id._py_client_shopee().item.update_item(data)
-        self._update_image_shopee()
+        if resp.get('item',{}).get('images') != [img.image_url for img in self.ecomm_product_image_ids if img.image_url]:
+            self._update_image_shopee()
         if True:
             self._last_info_update = fields.Datetime.now()
 
