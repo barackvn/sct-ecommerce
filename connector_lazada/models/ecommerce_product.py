@@ -71,7 +71,57 @@ class LazadaProductTemplate(models.Model):
         pass
 
     def _sync_info_lazada(self):
-        pass
+        self.ensure_one()
+        if not self.platform_item_idn: return
+        data = self._py_client_lazada_request('/product/item/get','GET', item_id=int(self.platform_item_idn)).get('data',{})
+        #for u in product['skus']:
+        #        p = tmpl.ecomm_product_product_ids.filtered(lambda p: p.platform_variant_idn == u.get('ShopSku'))
+        #        if p:
+        #            p.write({
+        #                'name': u.get('ShopSku'),
+        #                'sku': u.get('SellerSku')
+        #                })
+        #        else:
+        #            tmpl.write({
+        #                'ecomm_product_product_ids': [(0,_,{
+        #                    'name': u.get('ShopSku'),
+        #                    'platform_variant_idn': u.get('ShopSku'),
+        #                    'sku': u.get('SellerSku'),
+        #                    })]
+        #                })
+        #            l_id = len(tmpl.ecomm_product_image_ids)
+        #            l_i = product['skus'] and len(product['skus'][0]['Images']) or 0
+        #            tmpl.write({
+        #                'name': product['attributes']['name'],
+        #                'description': product['attributes']['short_description'],
+        #                'platform_item_idn': str(product['item_id']),
+        #                'ecomm_product_image_ids': [(1, tmpl.ecomm_product_image_ids[i].id, {
+        #                    'sequence': i,
+        #                    'image_url': i < l_i and product['skus'][0]['Images'][i] or False
+        #                    }) if i < l_id else (0, _, {
+        #                        'sequence': i,
+        #                        'image_url': product['skus'][0]['Images'][i]
+        #                        }) for i in range(max(l_id,l_i))],
+        #                    '_last_sync': datetime.now(),
+        #                    })
+        #        else:
+        #            model.create({
+        #                'name': product['attributes']['name'],
+        #                'description': product['attributes']['short_description'],
+        #                'shop_id': self.id,
+        #                'platform_item_idn': str(product['item_id']),
+        #                '_last_sync': datetime.now(),
+        #                'ecomm_product_product_ids': [(0, _, {
+        #                    'name': u['ShopSku'],
+        #                    'platform_variant_idn': u['ShopSku'],
+        #                    'sku': u['SellerSku']
+        #                    }) for u in product['skus']],
+        #                })
+        #            if data.get('total_products',0) > kw['offset']+kw['limit']:
+        #                kw['offset']+=kw['limit']
+        #                self._sync_product_lazada(**kw)
+        #            else:
+        #                self._last_product_sync = datetime.now()
 
     def _update_info_lazada(self,data={}):
         self.ensure_one()

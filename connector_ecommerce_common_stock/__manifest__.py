@@ -28,7 +28,7 @@
         'views/product_views.xml',
         'views/ecommerce_shop_views.xml',
         'views/ecommerce_product_views.xml',
-        'views/templates.xml',
+        'report/stock_report_views.xml',
     ],
     # only loaded in demonstration mode
     'demo': [

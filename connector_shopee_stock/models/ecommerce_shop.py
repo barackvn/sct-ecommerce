@@ -2,8 +2,11 @@
 
 from odoo import api, fields, models, exceptions
 from datetime import datetime, timedelta
+import base64, io, requests
+from PyPDF2 import PdfFileMerger, PdfFileReader
 import logging
 _logger= logging.getLogger(__name__)
+
 
 class SaleOrder(models.Model):
     _inherit = 'sale.order'
@@ -105,30 +108,59 @@ class eCommerceShop(models.Model):
 
     @api.model
     def get_tracking_no(self):
-        orders = self.env['sale.order'].search([
+        SaleOrder = self.env['sale.order']
+        report = self.env['ir.actions.report']._get_report_from_name('stock.report_deliveryslip')
+        domain = [
             ('ecommerce_shop_id.platform_id.platform','=','shopee'),
             ('state','=', 'sale'),
             ('need_tracking_no','=',True),
             ('confirmation_date','>',(datetime.now()-timedelta(days=15)).strftime("%Y-%m-%d %H:%M:%S"))
-            ], limit=50)
-        for order in orders:
-            if all(order.picking_ids.filtered(lambda r: r.state not in ['done','cancel']).mapped('carrier_tracking_ref')):
-                order.need_tracking_no = False
-                continue
-            logistic = False
-            try:
-                logistic = order.ecommerce_shop_id._py_client_shopee().logistic.get_order_logistic(ordersn=order.client_order_ref).get('logistics')
-            except exceptions.UserError:
-                pass
-            if logistic:
+        ]
+        fields, groupby = [], ['ecommerce_shop_id']
+        groups = SaleOrder.read_group(domain,fields, groupby, limit=200)
+        for group in groups:
+            orders_dict = {o.client_order_ref: o for o in SaleOrder.search(group['__domain'])}
+            orders_list = list(orders_dict.keys())
+            shop = self.browse(group['ecommerce_shop_id'][0])
+            tracks =[]
+            for i in range(0,len(orders_list),20):
+                tracks += shop._py_client_shopee().logistic.get_tracking_no(ordersn_list=orders_list[i:i+20]).get('result',{}).get('orders',[])
+            awbs = []
+            for i in range(0,len(orders_list),50):
+                awbs += shop._py_client_shopee().logistic.get_airway_bill(ordersn_list=orders_list, is_batch=False).get('result',{}).get('airway_bills',[])
+            for o in tracks:
+                order = orders_dict[o['ordersn']]
                 vals = {
-                    'carrier_tracking_ref': logistic['tracking_no'],
+                    'carrier_tracking_ref': o['tracking_no'],
                     }
                 if not order.carrier_id: 
-                    order.carrier_id = self.env['ecommerce.carrier'].search([('logistic_idn','=', logistic['logistic_id'])])[:1].carrier_id
+                    order.carrier_id = self.env['ecommerce.carrier'].search([('platform_id','=',shop.platform_id.id),('name','=', o['shipping_carrier'])])[:1].carrier_id
                     vals.update({'carrier_id': order.carrier_id.id})
                 order.picking_ids.filtered(lambda r: r.state not in ['done', 'cancel']).write(vals)
                 order.need_tracking_no = False
+            for o in awbs:
+                order = orders_dict[o['ordersn']]
+                start_picking = order.picking_ids.filtered(lambda r: r.state not in ['done', 'cancel'] and r.picking_type_id == order.warehouse_id.out_type_id)[:1]
+                if start_picking.ecomm_delivery_slip_loaded:
+                    continue
+                report.render(start_picking.ids)
+                attachment = report.retrieve_attachment(start_picking)
+                if attachment:
+                    merger = PdfFileMerger()
+                    merger.append(io.BytesIO(base64.decodestring(attachment.datas)),import_bookmarks=False)
+                    merger.append(io.BytesIO(requests.get(o['airway_bill']).content),import_bookmarks=False)
+                    buff = io.BytesIO()
+                    try:
+                        merger.write(buff)
+                        attachment.write({
+                            'datas': base64.encodestring(buff.getvalue()),
+                            'datas_fname': attachment.name
+                        })
+                    except exceptions.AccessError:
+                        _logger.info("Cannot save PDF report")
+                    finally:
+                        start_picking.ecomm_delivery_slip_loaded = True
+                        buff.close()
 
     def _get_logistic_shopee(self):
         self.ensure_one()
