@@ -300,7 +300,7 @@ class ShopeeProductTemplate(models.Model):
         self.ecomm_product_product_ids.calculate_stock()
         new_v = self.ecomm_product_product_ids.filtered(lambda r: not r.platform_variant_idn)
         o = len(self.ecomm_product_product_ids - new_v)
-        if new_v:
+        if self.attribute_line_ids:
             if len(self.attribute_line_ids) > 2:
                 raise exceptions.UserError('Tier variation should be under 2 level')
             tier_variation = [{
