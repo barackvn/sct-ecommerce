@@ -127,7 +127,7 @@ class eCommerceShop(models.Model):
                 tracks += shop._py_client_shopee().logistic.get_tracking_no(ordersn_list=orders_list[i:i+20]).get('result',{}).get('orders',[])
             awbs = []
             for i in range(0,len(orders_list),50):
-                awbs += shop._py_client_shopee().logistic.get_airway_bill(ordersn_list=orders_list, is_batch=False).get('result',{}).get('airway_bills',[])
+                awbs += shop._py_client_shopee().logistic.get_airway_bill(ordersn_list=orders_list[i:i+50], is_batch=False).get('result',{}).get('airway_bills',[])
             for o in tracks:
                 order = orders_dict[o['ordersn']]
                 vals = {
