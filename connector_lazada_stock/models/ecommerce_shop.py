@@ -2,6 +2,8 @@
 
 from odoo import api, fields, models
 from datetime import datetime, timedelta
+from PyPDF2 import PdfFileWriter, PdfFileReader
+import base64, io
 import logging
 _logger= logging.getLogger(__name__)
 
@@ -14,6 +16,34 @@ class eCommerceShop(models.Model):
 #            })
 #        return True
 
+    def _get_orders_detail_lazada(self, lazada_orders):
+        zip_orders = super(eCommerceShop, self)._get_orders_detail_lazada(lazada_orders)
+        to_update_pairs = [(d, d['order_items'][0]['order_item_id']) for o, d in zip_orders if d['order_items'][0].get('tracking_code')]
+        if not to_update_pairs:
+            return zip_orders
+        orders_detail, order_item_ids = zip(*to_update_pairs)
+        resp = self._py_client_lazada_request('/order/document/get', 'GET', doc_type='shippingLabel', order_item_ids=str(list(order_item_ids)))
+        if not resp.get('data'):
+            return zip_orders
+        raw = resp['data']['document']['file']
+        Report = self.env['ir.actions.report']
+        stream = io.BytesIO(Report._run_wkhtmltopdf([base64.b64decode(raw)]))
+        streams = [stream]
+        pdf = PdfFileReader(stream)
+        for page in range(pdf.getNumPages()):
+            writer = PdfFileWriter()
+            writer.addPage(pdf.getPage(page))
+            res_stream = io.BytesIO()
+            streams.append(res_stream)
+            writer.write(res_stream)
+            orders_detail[page]['order_items'][0]['shippingLabel'] = base64.encodestring(res_stream.getvalue())
+        for stream in streams:
+            try:
+                stream.close()
+            except Exception:
+                pass
+        return zip_orders
+
     def _create_order_lazada(self, order, detail=False):
         detail = detail or self._py_client_lazada_request('/order/items/get','GET', order_id = order['order_id']).get('data')
         sale_order = super(eCommerceShop, self)._create_order_lazada(order, detail=detail)
@@ -25,11 +55,15 @@ class eCommerceShop(models.Model):
         return sale_order
 
     def _update_order_lazada(self, order, statuses=[], detail=False):
+        report = self.env['ir.actions.report']._get_report_from_name('stock.report_deliveryslip')
         detail = detail or self._py_client_lazada_request('/order/items/get','GET', order_id = order.client_order_ref).get('data')
         order = super(eCommerceShop, self)._update_order_lazada(order, statuses=statuses, detail=detail)
         for status in statuses:
-            if status in ['ready_to_ship','shipped']:
+            if status in ['pending','ready_to_ship','shipped']:
                 order.invoice_shipping_on_delivery = False
+                #tracking code generated mean delivery info is ready
+                if not detail[0].get('tracking_code'):
+                    continue
                 if not order.carrier_id: 
                     order.carrier_id = self.env['ecommerce.carrier'].search([
                         ('name','=', detail[0].get('shipment_provider','').split('Delivery: ')[-1])
@@ -39,6 +73,36 @@ class eCommerceShop(models.Model):
                         'carrier_id': order.carrier_id.id,
                         'carrier_tracking_ref': detail[0].get('tracking_code','')
                     })
+                start_picking = order.picking_ids.filtered(lambda r: r.state not in ['done', 'cancel'] and r.picking_type_id == order.warehouse_id.out_type_id)[:1]
+                if not start_picking or start_picking.ecomm_delivery_slip_loaded:
+                    continue
+                report.render(start_picking.ids)
+                attachment = report.retrieve_attachment(start_picking)
+                if attachment:
+                    streams = [io.BytesIO(base64.decodestring(attachment.datas)), io.BytesIO(base64.decodestring(detail[0]['shippingLabel']))]
+                    writer = PdfFileWriter()
+                    for stream in streams:
+                        writer.appendPagesFromReader(PdfFileReader(stream))
+                    if writer.getNumPages()%2 == 1:
+                        writer.addBlankPage()
+                    res_stream = io.BytesIO()
+                    streams.append(res_stream)
+                    writer.write(res_stream)
+                    try:
+                        attachment.write({
+                            'datas': base64.encodestring(res_stream.getvalue()),
+                            'datas_fname': attachment.name
+                            })
+                    except exceptions.AccessError:
+                        _logger.info("Cannot save PDF report")
+                    finally:
+                        start_picking.ecomm_delivery_slip_loaded = True
+                        for stream in streams:
+                            try:
+                                stream.close()
+                            except Exception:
+                                pass
+
             elif status in ['returned', 'failed', 'cancel']:
                 pick_ids = order.picking_ids.filtered(lambda r: r.picking_type_id == self.env.ref('connector_lazada_stock.stock_picking_type_lazada_out')) + order.picking_ids.filtered(lambda r: r.picking_type_id == order.warehouse_id.out_type_id)
                 for pick_id in pick_ids:

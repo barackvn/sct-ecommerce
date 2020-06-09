@@ -3,7 +3,7 @@
 from odoo import api, fields, models, exceptions
 from datetime import datetime, timedelta
 import base64, io, requests
-from PyPDF2 import PdfFileMerger, PdfFileReader
+from PyPDF2 import PdfFileWriter, PdfFileReader
 import logging
 _logger= logging.getLogger(__name__)
 
@@ -146,21 +146,29 @@ class eCommerceShop(models.Model):
                 report.render(start_picking.ids)
                 attachment = report.retrieve_attachment(start_picking)
                 if attachment:
-                    merger = PdfFileMerger()
-                    merger.append(io.BytesIO(base64.decodestring(attachment.datas)),import_bookmarks=False)
-                    merger.append(io.BytesIO(requests.get(o['airway_bill']).content),import_bookmarks=False)
-                    buff = io.BytesIO()
+                    streams = [io.BytesIO(base64.decodestring(attachment.datas)), io.BytesIO(requests.get(o['airway_bill']).content)]
+                    writer = PdfFileWriter()
+                    for stream in streams:
+                        writer.appendPagesFromReader(PdfFileReader(stream))
+                    if writer.getNumPages()%2 == 1:
+                        writer.addBlankPage()
+                    res_stream = io.BytesIO()
+                    streams.append(res_stream)
+                    writer.write(res_stream)
                     try:
-                        merger.write(buff)
                         attachment.write({
-                            'datas': base64.encodestring(buff.getvalue()),
+                            'datas': base64.encodestring(res_stream.getvalue()),
                             'datas_fname': attachment.name
                         })
                     except exceptions.AccessError:
                         _logger.info("Cannot save PDF report")
                     finally:
                         start_picking.ecomm_delivery_slip_loaded = True
-                        buff.close()
+                        for stream in streams:
+                            try:
+                                stream.close()
+                            except Exception:
+                                pass
 
     def _get_logistic_shopee(self):
         self.ensure_one()

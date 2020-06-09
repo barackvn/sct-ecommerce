@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <data noupdate="1">
+        <record model="ir.actions.server" id="sync_tracking_info_action">
+            <field name="name">Sync Tracking Info</field>
+            <field name="model_id" ref="stock.model_stock_picking"/>
+            <field name="binding_model_id" ref="stock.model_stock_picking"/>
+            <field name="state">code</field>
+            <field name="code">records.sync_tracking_info()</field>
+        </record>
+    </data>
+</odoo>
+

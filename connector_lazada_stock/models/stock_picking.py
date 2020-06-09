@@ -9,7 +9,7 @@ _logger = logging.getLogger(__name__)
 class StockPicking(models.Model):
     _inherit = 'stock.picking'
     
-    def _sync_tracking_info_shopee(self, shop):
+    def _sync_tracking_info_lazada(self,shop):
         report = self.env['ir.actions.report']._get_report_from_name('stock.report_deliveryslip')
         pickings_dict = {}
         for p in self:
@@ -18,35 +18,39 @@ class StockPicking(models.Model):
             else:
                 pickings_dict[p.sale_id.client_order_ref] = p
         ordersn_list = list(pickings_dict.keys())
-        tracks =[]
-        for i in range(0,len(ordersn_list),20):
-            tracks += shop._py_client_shopee().logistic.get_tracking_no(ordersn_list=ordersn_list[i:i+20]).get('result',{}).get('orders',[])
-        awbs = []
-        for i in range(0,len(ordersn_list),50):
-            awbs += shop._py_client_shopee().logistic.get_airway_bill(ordersn_list=ordersn_list[i:i+50], is_batch=False).get('result',{}).get('airway_bills',[])
-        for o in tracks:
-            pickings = pickings_dict[o['ordersn']]
+        details_list = shop._py_client_lazada_request('/orders/items/get', 'GET', order_ids=str(ordersn_list)).get('data')
+        to_update_pairs = [(d, d['order_items'][0]['order_item_id']) for d in details_list if d['order_items'][0].get('tracking_code')]
+        orders_detail, order_item_ids = zip(*to_update_pairs)
+        resp = shop._py_client_lazada_request('/order/document/get', 'GET', doc_type='shippingLabel', order_item_ids=str(list(order_item_ids)))
+        if not resp.get('data'):
+            return
+        raw = resp['data']['document']['file']
+        Report = self.env['ir.actions.report']
+        doc_stream = io.BytesIO(Report._run_wkhtmltopdf([base64.b64decode(raw)]))
+        streams = [doc_stream]
+        pdf_doc = PdfFileReader(doc_stream)
+        for page in range(pdf_doc.getNumPages()):
+            detail = orders_detail[page]
+            pickings = pickings_dict[str(detail['order_id'])]
             vals = {
-                'carrier_tracking_ref': o['tracking_no'],
+                'carrier_tracking_ref': detail['order_items'][0]['tracking_code'],
                 'carrier_id': self.env['ecommerce.carrier'].search([
                     ('platform_id','=',shop.platform_id.id),
-                    ('name','=', o['shipping_carrier'])
+                    ('name','=', detail['order_items'][0]['shipment_provider'].split('Delivery: ')[-1]),
                 ])[:1].carrier_id.id,
             }
             pickings.write(vals)
-        for o in awbs:
-            pickings = pickings_dict[o['ordersn']]
             for picking in pickings:
                 if picking.ecomm_delivery_slip_loaded:
                     continue
                 report.render(picking.ids)
                 attachment = report.retrieve_attachment(picking)
                 if attachment:
-                    streams = [io.BytesIO(base64.decodestring(attachment.datas)), io.BytesIO(requests.get(o['airway_bill']).content)]
+                    stream = io.BytesIO(base64.decodestring(attachment.datas))
                     writer = PdfFileWriter()
-                    for stream in streams:
-                        writer.appendPagesFromReader(PdfFileReader(stream))
-                    if writer.getNumPages()%2==1:
+                    writer.appendPagesFromReader(PdfFileReader(stream))
+                    writer.addPage(pdf_doc.getPage(page))
+                    if writer.getNumPages()%2 == 1:
                         writer.addBlankPage()
                     res_stream = io.BytesIO()
                     streams.append(res_stream)
@@ -60,8 +64,9 @@ class StockPicking(models.Model):
                         _logger.info("Cannot save PDF report")
                     finally:
                         picking.ecomm_delivery_slip_loaded = True
-                        for stream in streams:
-                            try:
-                                stream.close()
-                            except Exception:
-                                pass
+        for stream in streams:
+            try:
+                stream.close()
+            except Exception:
+                pass
+

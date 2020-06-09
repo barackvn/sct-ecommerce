@@ -220,10 +220,7 @@ class eCommerceShop(models.Model):
             resp = shop._py_client_lazada_request('/orders/get','GET', **kw)
             if not resp.get('data').get('count'):
                 continue
-            order_ids = [l_o['order_id'] for l_o in resp.get('data').get('orders')]
-            dresp = shop._py_client_lazada_request('/orders/items/get','GET', order_ids = str(order_ids)) 
-            for lazada_order, o_detail in zip(sorted(resp.get('data').get('orders'), key= lambda o: o['order_id']), 
-                    sorted(dresp.get('data'),key=lambda d: d['order_id'])):
+            for lazada_order, o_detail in shop._get_orders_detail_lazada(resp.get('data').get('orders')):
                 detail = o_detail.get('order_items')
                 order = self.env['sale.order'].search([
                     ('ecommerce_shop_id','=',shop.id),
@@ -232,6 +229,14 @@ class eCommerceShop(models.Model):
                 statuses = lazada_order['statuses']
                 shop._update_order_lazada(order,statuses=statuses, detail=detail)
             shop._last_order_sync = datetime.strptime(resp['data']['orders'][-1]['updated_at'],'%Y-%m-%d %H:%M:%S %z').astimezone(pytz.utc).replace(tzinfo=None)
+    
+    def _get_orders_detail_lazada(self, lazada_orders):
+        self.ensure_one()
+        order_ids = [l_o.get('order_id') for l_o in lazada_orders]
+        dresp = self._py_client_lazada_request('/orders/items/get','GET', order_ids = str(order_ids))
+        lazada_orders = sorted(lazada_orders, key= lambda o: o.get('order_id'))
+        orders_detail = sorted(dresp.get('data'),key=lambda d: d.get('order_id'))
+        return list(zip(lazada_orders, orders_detail))
 
     def _create_order_lazada(self, order, detail=False):
         self.ensure_one()
@@ -284,7 +289,7 @@ class eCommerceShop(models.Model):
 
     def _update_order_lazada(self, order, statuses=[], detail=False):
         for status in statuses:
-            if status == 'ready_to_ship':
+            if status in  ['pending','ready_to_ship','shipped']:
                 if order.state in ['draft', 'sent']: 
                     order.action_confirm()
             elif status == 'canceled':

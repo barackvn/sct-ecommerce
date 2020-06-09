@@ -20,7 +20,7 @@
     'version': '0.1',
 
     # any module necessary for this one to work correctly
-    'depends': ['website_sale_stock', 'stock_product_pack','connector_ecommerce_common'],
+    'depends': ['website_sale_stock', 'stock_product_pack','connector_ecommerce_common', 'delivery'],
 
     # always loaded
     'data': [
@@ -28,6 +28,7 @@
         'views/product_views.xml',
         'views/ecommerce_shop_views.xml',
         'views/ecommerce_product_views.xml',
+        'views/stock_picking_views.xml',
         'report/stock_report_views.xml',
     ],
     # only loaded in demonstration mode

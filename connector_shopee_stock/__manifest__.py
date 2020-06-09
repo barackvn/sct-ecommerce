@@ -19,7 +19,7 @@
     'version': '0.1',
 
     # any module necessary for this one to work correctly
-    'depends': ['stock', 'connector_ecommerce_common_stock','connector_shopee'],
+    'depends': ['connector_ecommerce_common_stock','connector_shopee'],
 
     # always loaded
     'data': [
