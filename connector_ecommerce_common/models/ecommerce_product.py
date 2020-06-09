@@ -473,7 +473,7 @@ class eCommerceProductProduct(models.Model):
     @api.depends('attr_line_value_ids')
     def compute_index(self):
         for p in self:
-            p.index = '[{}]'.format(', '.join(p.attr_line_value_ids.mapped(lambda r: str(r.sequence))))
+            p.index = '[{}]'.format(', '.join(p.attr_line_value_ids.mapped(lambda r: '{:02d}'.format(r.sequence))))
 
 
     @api.onchange('product_product_id')

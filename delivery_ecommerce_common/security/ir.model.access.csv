@@ -1,0 +1,2 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_delivery_ecommerce_common_delivery_ecommerce_common,delivery_ecommerce_common.delivery_ecommerce_common,model_delivery_ecommerce_common_delivery_ecommerce_common,,1,0,0,0
