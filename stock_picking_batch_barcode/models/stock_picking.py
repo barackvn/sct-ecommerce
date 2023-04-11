@@ -15,7 +15,9 @@ class StockPicking(models.Model):
         for pick in self:
             precision_digits = self.env['decimal.precision'].precision_get('Product Unit of Measure')
             if pick.move_lines.filtered(lambda m: m.state not in ('cancel')) and  all(float_compare(move.quantity_done,move.product_uom_qty,precision_digits=precision_digits) == 0 for move in pick.move_lines.filtered(lambda m: m.state not in ('done', 'cancel'))):
-                pick.message_post(body='Logistic time stamp: {}'.format(fields.Datetime.now().astimezone(pytz.timezone(self.env.user.tz or 'UTC'))))
+                pick.message_post(
+                    body=f"Logistic time stamp: {fields.Datetime.now().astimezone(pytz.timezone(self.env.user.tz or 'UTC'))}"
+                )
                 pick.all_quantities_done = True
 
     def _inverse_all_quantities_done(self):
@@ -23,7 +25,9 @@ class StockPicking(models.Model):
             if pick.all_quantities_done: 
                 for l in pick.move_line_ids.filtered(lambda l: l.state not in ('done','cancel')):
                     l.qty_done = l.product_uom_qty
-                pick.message_post(body='Logistic time stamp: {}'.format(fields.Datetime.now().astimezone(pytz.timezone(self.env.user.tz or 'UTC'))))
+                pick.message_post(
+                    body=f"Logistic time stamp: {fields.Datetime.now().astimezone(pytz.timezone(self.env.user.tz or 'UTC'))}"
+                )
             else: pick.move_line_ids.filtered(lambda l: l.state not in ('done','cancel')).write({'qty_done': 0})
 
     @api.depends('carrier_tracking_ref')

@@ -64,19 +64,52 @@ class eCommerceShop(models.Model):
                         })
                         for moves in zip(pick_id.move_lines, return_pick.move_lines):
                             l = len(moves[1].move_line_ids)
-                            moves[1].write({
-                                'move_line_ids': [(1, moves[1].move_line_ids[i].id, {
-                                    'lot_id': v.lot_id and v.lot_id.id
-                                }) for i,v in enumerate(moves[0].move_line_ids[:l])] + [(0, _, {
-                                    'product_uom_id': moves[1].product_uom.id,
-                                    'picking_id': moves[1].picking_id.id,
-                                    'move_id': moves[1].id,
-                                    'product_id': moves[1].product_id.id,
-                                    'location_id': moves[1].location_id.id,
-                                    'location_dest_id': moves[1].location_dest_id.id,
-                                    'lot_id': v.lot_id and v.lot_id.id
-                                }) for i,v in enumerate(moves[0].move_line_ids[l:])]
-                            })
+                            moves[1].write(
+                                {
+                                    'move_line_ids': (
+                                        [
+                                            (
+                                                1,
+                                                moves[1].move_line_ids[i].id,
+                                                {
+                                                    'lot_id': v.lot_id
+                                                    and v.lot_id.id
+                                                },
+                                            )
+                                            for i, v in enumerate(
+                                                moves[0].move_line_ids[:l]
+                                            )
+                                        ]
+                                        + [
+                                            (
+                                                0,
+                                                _,
+                                                {
+                                                    'product_uom_id': moves[
+                                                        1
+                                                    ].product_uom.id,
+                                                    'picking_id': moves[
+                                                        1
+                                                    ].picking_id.id,
+                                                    'move_id': moves[1].id,
+                                                    'product_id': moves[
+                                                        1
+                                                    ].product_id.id,
+                                                    'location_id': moves[
+                                                        1
+                                                    ].location_id.id,
+                                                    'location_dest_id': moves[
+                                                        1
+                                                    ].location_dest_id.id,
+                                                    'lot_id': v.lot_id
+                                                    and v.lot_id.id,
+                                                },
+                                            )
+                                            for v in moves[0].move_line_ids[l:]
+                                        ]
+                                    )
+                                }
+                            )
             for line in order.order_line:
                 line.product_uom_qty = line.qty_delivered
 
@@ -135,7 +168,7 @@ class eCommerceShop(models.Model):
                     }
                 if not order.carrier_id: 
                     order.carrier_id = self.env['ecommerce.carrier'].search([('platform_id','=',shop.platform_id.id),('name','=', o['shipping_carrier'])])[:1].carrier_id
-                    vals.update({'carrier_id': order.carrier_id.id})
+                    vals['carrier_id'] = order.carrier_id.id
                 order.picking_ids.filtered(lambda r: r.state not in ['done', 'cancel']).write(vals)
                 order.need_tracking_no = False
             for o in awbs:
@@ -144,8 +177,7 @@ class eCommerceShop(models.Model):
                 if start_picking.ecomm_delivery_slip_loaded:
                     continue
                 report.render(start_picking.ids)
-                attachment = report.retrieve_attachment(start_picking)
-                if attachment:
+                if attachment := report.retrieve_attachment(start_picking):
                     streams = [io.BytesIO(base64.decodestring(attachment.datas)), io.BytesIO(requests.get(o['airway_bill']).content)]
                     writer = PdfFileWriter()
                     for stream in streams:
@@ -174,11 +206,12 @@ class eCommerceShop(models.Model):
         self.ensure_one()
         logistics = self._py_client_shopee().logistic.get_logistics().get('logistics',[])
         for l in logistics:
-            carrier = self.env['ecommerce.shop.carrier'].search([
-                ('shop_id', '=', self.id),
-                ('ecomm_carrier_id.logistic_idn','=',l.get('logistic_id'))
-            ])
-            if carrier: 
+            if carrier := self.env['ecommerce.shop.carrier'].search(
+                [
+                    ('shop_id', '=', self.id),
+                    ('ecomm_carrier_id.logistic_idn', '=', l.get('logistic_id')),
+                ]
+            ):
                 carrier[0].write({
                     'enable': l.get('enabled'),
                     'default': l.get('preferred'),

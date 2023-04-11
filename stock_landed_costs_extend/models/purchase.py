@@ -21,8 +21,9 @@ class PurchaseOrder(models.Model):
         result = super(PurchaseOrder, self).button_approve(force=force)
         for order in self:
             if not order.landed_cost_id:
-                landed_cost_lines = order.order_line.filtered('product_id.landed_cost_ok')
-                if landed_cost_lines:
+                if landed_cost_lines := order.order_line.filtered(
+                    'product_id.landed_cost_ok'
+                ):
                     order.landed_cost_id = self.env['stock.landed.cost'].create({
                         'cost_lines': [(0, _, {
                             'product_id': l.product_id.id,

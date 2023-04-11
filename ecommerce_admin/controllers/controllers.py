@@ -19,7 +19,7 @@ class ShopeeApiServer(http.Controller):
         if shops and shops[0] != shop:
             shop.unlink()
             shop = shops[0]
-        kw.update({'state': 'auth'})
+        kw['state'] = 'auth'
         shop.write(dict(kw))
         _vals = {'code': 1, 'shop_id':kw.get('shop_id')}
         shop.handle_push(_vals)
@@ -45,16 +45,11 @@ class ShopeeApiServer(http.Controller):
         partner_key = http.request.env['ir.config_parameter'].sudo().get_param(PARAMS['key'], '')
         authorization = http.request.httprequest.environ.get('HTTP_AUTHORIZATION')
         #_logger.info(authorization)
-        base_string = url + '|' + request_body
+        base_string = f'{url}|{request_body}'
         cal_auth = hmac.new(partner_key.encode(), base_string.encode(), hashlib.sha256).hexdigest()
-        #_logger.info(cal_auth)
-        #if cal_auth == authorization:
-        if True:
-            _logger.info(json_data)
-            http.request.env['shopee_server.shop'].sudo().search([('shop_id','=',json_data.get('shop_id'))]).handle_push(json_data)
-            return http.Response(status=202)
-        else:
-            return http.Response(status=500)
+        _logger.info(json_data)
+        http.request.env['shopee_server.shop'].sudo().search([('shop_id','=',json_data.get('shop_id'))]).handle_push(json_data)
+        return http.Response(status=202)
  
 
 #        _logger.info(http.request.__dict__)

@@ -10,7 +10,11 @@ def to_xml_str(key, val, prolog=False):
     elif isinstance(val,(list,tuple)):
         k = key[:-1]
         val = ''.join((to_xml_str(k,v) for v in val))
-    return '{prolog}<{key}>{val}</{key}>'.format(prolog='{}'.format(prolog and '<?xml version="1.0" encoding="UTF-8"?>' or ''),key=key,val=val)
+    return '{prolog}<{key}>{val}</{key}>'.format(
+        prolog=f"""{prolog and '<?xml version="1.0" encoding="UTF-8"?>' or ''}""",
+        key=key,
+        val=val,
+    )
 
 class LazadaProductPreset(models.Model):
     _name = 'lazada.product.preset'
@@ -154,17 +158,35 @@ class LazadaProductTemplate(models.Model):
 
     def _onchange_shop_id_lazada(self):
         if self.shop_id and not self.ecomm_product_image_ids and not self.attribute_line_ids:
-            self.update({
-                'ecomm_product_image_ids': [(0, 0, {
-                    'res_model': 'ecommerce.product.template',
-                    'name': 'Cover',
-                    'sequence': 0
-                })] + [(0, 0, {
-                    'res_model': 'ecommerce.product.template',
-                    'name': 'Image {}'.format(i),
-                    'sequence': i
-                }) for i in range(1,7)]
-            })
+            self.update(
+                {
+                    'ecomm_product_image_ids': (
+                        [
+                            (
+                                0,
+                                0,
+                                {
+                                    'res_model': 'ecommerce.product.template',
+                                    'name': 'Cover',
+                                    'sequence': 0,
+                                },
+                            )
+                        ]
+                        + [
+                            (
+                                0,
+                                0,
+                                {
+                                    'res_model': 'ecommerce.product.template',
+                                    'name': f'Image {i}',
+                                    'sequence': i,
+                                },
+                            )
+                            for i in range(1, 7)
+                        ]
+                    )
+                }
+            )
 
 class LazadaProductProduct(models.Model):
     _inherit = 'ecommerce.product.product'

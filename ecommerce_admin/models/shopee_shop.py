@@ -38,7 +38,9 @@ class ShopeeServerShop(models.Model):
         partner_id = self.env['ir.config_parameter'].get_param(PARAMS['partner_id'], 0)
         key = self.env['ir.config_parameter'].get_param(PARAMS['key'], '')
         for shop in self:
-            redirect_url = 'https://shopee.scaleup.top/shopee_server/shop/{}/retrieve'.format(shop.id)
+            redirect_url = (
+                f'https://shopee.scaleup.top/shopee_server/shop/{shop.id}/retrieve'
+            )
             shop.pyClient = pyshopee.Client(shop.shop_id, partner_id, key)
             shop.authorize_url = shop.pyClient.shop.authorize(redirect_url)
             shop.deauthorize_url = shop.pyClient.shop.cancel_authorize(redirect_url)
@@ -61,23 +63,22 @@ class ShopeeServerShop(models.Model):
     @api.multi
     def handle_push(self, data):
         for shop in self:
+            if data.get('code',0) == 2:
+                continue
             if data.get('code',0) == 1:
-                url = "https://{}/shopee_client/shop/{}/auth".format(shop.client_id.name, shop.client_shop_id)
+                url = f"https://{shop.client_id.name}/shopee_client/shop/{shop.client_shop_id}/auth"
                 partner_id = self.env['ir.config_parameter'].get_param(PARAMS['partner_id'], 0)
                 key = self.env['ir.config_parameter'].get_param(PARAMS['key'], '')
                 values = {'shop_id': data.get('shop_id'),'state':'auth', 'partner_id': partner_id, 'key': key}
                 shop.pyClient = pyshopee.Client(shop.shop_id, partner_id, key)
                 req = requests.post(url=url,data=values)
-            
-            elif data.get('code',0) == 2:
-                pass
 
             elif data.get('code',0) == 3:
-                url = "https://{}/shopee_client/shop/{}/order_status".format(shop.client_id.name, shop.client_shop_id)
+                url = f"https://{shop.client_id.name}/shopee_client/shop/{shop.client_shop_id}/order_status"
                 req = requests.post(url=url,data=data.get('data'))
-            
+
             elif data.get('code',0) == 4:
-                url = "https://{}/shopee_client/shop/{}/order_tracking_no".format(shop.client_id.name, shop.client_shop_id)
+                url = f"https://{shop.client_id.name}/shopee_client/shop/{shop.client_shop_id}/order_tracking_no"
                 req = requests.post(url=url,data=data.get('data'))
 
 #    @api.depends()

@@ -73,24 +73,59 @@ class ShopeeClientShop(models.Model):
                 }
 #        partner_id = self.env['res.partner'].search([('phone','=',partner_vals['phone'])])[:1] or self.env['res.partner'].create(partner_vals)
 
-        order = self.env['sale.order'].create({
-                'shop_ref' : '{},{}'.format(self._name, self.id),
+        order = self.env['sale.order'].create(
+            {
+                'shop_ref': f'{self._name},{self.id}',
                 'team_id': self.team_id and self.team_id.id,
                 'client_order_ref': ordersn,
-                'partner_id': self.env['res.partner'].search([('phone','=',partner_vals['phone'])])[:1].id or self.env['res.partner'].create(partner_vals).id,
-                'order_line':[(0, _, {
-                    'product_id' : self.env['product.product'].search([('default_code','=',item['variation_sku'] or item['item_sku'])])[:1].id or self.env['product.product'].create({
-                        'name': item['variation_name'] or item['item_name'],
-                        'default_code': item['variation_sku'] or item['item_sku'],
-                        'lst_price': item['variation_original_price'],
-                        'type': 'product',
-                        }).id,
-                    'price_unit': item['variation_discounted_price'] != '0' and item['variation_discounted_price'] or item['variation_original_price'],
-                    'product_uom_qty': item['variation_quantity_purchased'],
-                    #'route_id': self.route_id.id,
-                    }) for item in shopee_order['items']], 
-                })
-        order.message_post(body='Shipping Address: {}'.format(shopee_order['recipient_address']['full_address']))
+                'partner_id': self.env['res.partner']
+                .search([('phone', '=', partner_vals['phone'])])[:1]
+                .id
+                or self.env['res.partner'].create(partner_vals).id,
+                'order_line': [
+                    (
+                        0,
+                        _,
+                        {
+                            'product_id': self.env['product.product']
+                            .search(
+                                [
+                                    (
+                                        'default_code',
+                                        '=',
+                                        item['variation_sku'] or item['item_sku'],
+                                    )
+                                ]
+                            )[:1]
+                            .id
+                            or self.env['product.product']
+                            .create(
+                                {
+                                    'name': item['variation_name']
+                                    or item['item_name'],
+                                    'default_code': item['variation_sku']
+                                    or item['item_sku'],
+                                    'lst_price': item['variation_original_price'],
+                                    'type': 'product',
+                                }
+                            )
+                            .id,
+                            'price_unit': item['variation_discounted_price'] != '0'
+                            and item['variation_discounted_price']
+                            or item['variation_original_price'],
+                            'product_uom_qty': item[
+                                'variation_quantity_purchased'
+                            ],
+                            #'route_id': self.route_id.id,
+                        },
+                    )
+                    for item in shopee_order['items']
+                ],
+            }
+        )
+        order.message_post(
+            body=f"Shipping Address: {shopee_order['recipient_address']['full_address']}"
+        )
         return order
 
 

@@ -7,5 +7,5 @@ class eCommerceShop(models.Model):
 
     def get_logistic(self):
         for shop in self:
-            getattr(shop,'_get_logistic_{}'.format(shop.platform_id.platform))()
+            getattr(shop, f'_get_logistic_{shop.platform_id.platform}')()
 

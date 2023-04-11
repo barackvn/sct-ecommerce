@@ -34,21 +34,23 @@ class eCommerceShop(models.Model):
     
     def _get_info_lazada(self):
         self.ensure_one()
-        data = self._py_client_lazada_request('/seller/get','GET').get('data')
-        if data: self.write({
-            'ecomm_shop_name': data.get('name'),
-            'ecomm_shop_idn': data.get('seller_id')
-            })
+        if data := self._py_client_lazada_request('/seller/get', 'GET').get(
+            'data'
+        ):
+            if data: self.write({
+                'ecomm_shop_name': data.get('name'),
+                'ecomm_shop_idn': data.get('seller_id')
+                })
 
         
 
     def _auth_lazada(self):
         params = {
             'client_id': self.platform_id.partner_id,
-            'redirect_uri': '{}/connector_ecommerce/{}/auth'.format(self.env['ir.config_parameter'].sudo().get_param('web.base.url'),self.id),
+            'redirect_uri': f"{self.env['ir.config_parameter'].sudo().get_param('web.base.url')}/connector_ecommerce/{self.id}/auth",
             'response_type': 'code',
-            'force_auth': True
-            }
+            'force_auth': True,
+        }
         return {
             'type': 'ir.actions.act_url',
             'url' : requests.Request('GET', 'https://auth.lazada.com/oauth/authorize', params=params).prepare().url,
@@ -105,14 +107,16 @@ class eCommerceShop(models.Model):
             kw.setdefault('update_after', self._last_product_sync and self._last_product_sync.replace(microsecond=0).isoformat() or (datetime.now()-timedelta(days=15)).replace(microsecond=0).isoformat())
         data = self._py_client_lazada_request('/products/get','GET', filter='all', **kw).get('data',{})
         for product in data.get('products',[]):
-            tmpl = model.search([
-                ('shop_id', '=', self.id),
-                ('platform_item_idn', '=', str(product.get('item_id')))
-            ])
-            if tmpl:
+            if tmpl := model.search(
+                [
+                    ('shop_id', '=', self.id),
+                    ('platform_item_idn', '=', str(product.get('item_id'))),
+                ]
+            ):
                 for u in product['skus']:
-                    p = tmpl.ecomm_product_product_ids.filtered(lambda p: p.platform_variant_idn == u.get('ShopSku'))
-                    if p:
+                    if p := tmpl.ecomm_product_product_ids.filtered(
+                        lambda p: p.platform_variant_idn == u.get('ShopSku')
+                    ):
                         p.write({
                             'name': u.get('ShopSku'),
                             'sku': u.get('SellerSku')
@@ -188,16 +192,26 @@ class eCommerceShop(models.Model):
                         }) for u in product['skus']],
                     })
                     if not tmpl.lazada_product_preset_id:
-                        vals = {
-                            'platform_id': self.platform_id.id,
-                            'ecomm_categ_id': self.env['ecommerce.category'].search([
-                                ('platform_id','=',self.platform_id.id),
-                                ('platform_categ_idn','=',product.get('primary_category'))
-                            ]).id,
-                            'product_tmpl_id': tmpl.id,
+                        vals = (
+                            {
+                                'platform_id': self.platform_id.id,
+                                'ecomm_categ_id': self.env['ecommerce.category']
+                                .search(
+                                    [
+                                        ('platform_id', '=', self.platform_id.id),
+                                        (
+                                            'platform_categ_idn',
+                                            '=',
+                                            product.get('primary_category'),
+                                        ),
+                                    ]
+                                )
+                                .id,
+                                'product_tmpl_id': tmpl.id,
                             }
-                        vals.update({a: product['attributes'].get(a) for a in attrs})
-                        vals.update({s: product['skus'][0].get(s) for s in sku_attrs})
+                            | {a: product['attributes'].get(a) for a in attrs}
+                            | {s: product['skus'][0].get(s) for s in sku_attrs}
+                        )
                         self.env['lazada.product.preset'].create(vals)
 
             if data['total_products'] > offset+limit:
@@ -210,13 +224,20 @@ class eCommerceShop(models.Model):
             ('platform_id.platform','=','lazada'),
             ('auto_sync','=', True)])
         for shop in shops:
-            kw.update({
-                'offset': kw.get('offset',0),
-                'limit': kw.get('limit',100),
-                'sort_by': kw.get('sort_by','updated_at'),
+            kw |= {
+                'offset': kw.get('offset', 0),
+                'limit': kw.get('limit', 100),
+                'sort_by': kw.get('sort_by', 'updated_at'),
                 'sort_direction': kw.get('sort_direction', 'ASC'),
-                'update_after': kw.get('update_after', shop._last_order_sync and shop._last_order_sync.astimezone().isoformat() or (datetime.now()-timedelta(days=15)).astimezone().isoformat())
-            })
+                'update_after': kw.get(
+                    'update_after',
+                    shop._last_order_sync
+                    and shop._last_order_sync.astimezone().isoformat()
+                    or (datetime.now() - timedelta(days=15))
+                    .astimezone()
+                    .isoformat(),
+                ),
+            }
             resp = shop._py_client_lazada_request('/orders/get','GET', **kw)
             if not resp.get('data').get('count'):
                 continue
@@ -242,13 +263,14 @@ class eCommerceShop(models.Model):
         self.ensure_one()
         detail = detail or self._py_client_lazada_request('/order/items/get','GET', order_id = order['order_id']).get('data')
         address = order['address_shipping']
-        partner_id = self.env['res.partner'].search([
-            ('type','!=','delivery'),
-            ('phone','=',address['phone'])
-        ])[:1] or self.env['res.partner'].create({
-            'name': '{} {}'.format(order['customer_first_name'], order['customer_last_name']),
-            'phone': address['phone'],
-            })
+        partner_id = self.env['res.partner'].search(
+            [('type', '!=', 'delivery'), ('phone', '=', address['phone'])]
+        )[:1] or self.env['res.partner'].create(
+            {
+                'name': f"{order['customer_first_name']} {order['customer_last_name']}",
+                'phone': address['phone'],
+            }
+        )
         country_id = self.env['res.country'].search([('name','=',address['country'])])
         state_id = self.env['res.country.state'].search([('name','=',address['address3']),('country_id','=',country_id.id)])
         shipping_address = {
@@ -263,29 +285,43 @@ class eCommerceShop(models.Model):
         if shipping_ids:
             shipping_id = shipping_ids[0]
         else:
-            shipping_address.update({
+            shipping_address |= {
                 'type': 'delivery',
                 'parent_id': partner_id.id,
                 'phone': address['phone'],
-            })
+            }
             shipping_id = self.env['res.partner'].create(shipping_address)
-        sale_order = self.env['sale.order'].create({
-            'ecommerce_shop_id' : self.id,
-            'team_id': self.team_id and self.team_id.id,
-            'client_order_ref': order['order_id'],
-            'partner_id': partner_id.id,
-            'partner_shipping_id': shipping_id.id,
-            'order_line':[(0, _, {
-                'product_id' : item['shop_sku'] and self.env['ecommerce.product.product'].search([
-                    ('platform_variant_idn','=',item['shop_sku'])
-                ]).product_product_id.id or self.env.ref("connector_lazada.lazada_product_product_default").id,
-                'name': item['name'],
-                'price_unit': item['paid_price'],
-                'product_uom_qty': 1,
-                    #'route_id': self.route_id.id,
-                }) for item in detail], 
-            })
-        return sale_order
+        return self.env['sale.order'].create(
+            {
+                'ecommerce_shop_id': self.id,
+                'team_id': self.team_id and self.team_id.id,
+                'client_order_ref': order['order_id'],
+                'partner_id': partner_id.id,
+                'partner_shipping_id': shipping_id.id,
+                'order_line': [
+                    (
+                        0,
+                        _,
+                        {
+                            'product_id': item['shop_sku']
+                            and self.env['ecommerce.product.product']
+                            .search(
+                                [('platform_variant_idn', '=', item['shop_sku'])]
+                            )
+                            .product_product_id.id
+                            or self.env.ref(
+                                "connector_lazada.lazada_product_product_default"
+                            ).id,
+                            'name': item['name'],
+                            'price_unit': item['paid_price'],
+                            'product_uom_qty': 1,
+                            #'route_id': self.route_id.id,
+                        },
+                    )
+                    for item in detail
+                ],
+            }
+        )
 
     def _update_order_lazada(self, order, statuses=[], detail=False):
         for status in statuses:

@@ -21,7 +21,9 @@ class eCommerceCategory(models.Model):
     def _compute_complete_name(self):
         for category in self:
             if category.parent_id:
-                category.complete_name = '{} > {}'.format(category.parent_id.complete_name, category.name)
+                category.complete_name = (
+                    f'{category.parent_id.complete_name} > {category.name}'
+                )
             else:
                 category.complete_name = category.name
 
@@ -34,7 +36,7 @@ class eCommerceCategory(models.Model):
     @api.model
     def name_get(self):
         if self._context.get('short_name'): 
-            return [(record.id, "{}".format(record.name)) for record in self]
+            return [(record.id, f"{record.name}") for record in self]
         else:
             return super(eCommerceCategory, self).name_get()
 
@@ -66,7 +68,9 @@ class eCommerceCategorySelector(models.Model):
         while c.parent_id:
             c = c.parent_id
             tree.insert(0,c)
-        self.with_context(short_name=False).update({'tier{}'.format(i+1): c.id for i,c in enumerate(tree)})
+        self.with_context(short_name=False).update(
+            {f'tier{i + 1}': c.id for i, c in enumerate(tree)}
+        )
 
     @api.onchange('tier1','tier2','tier3','tier4')
     def onchange_tiers(self):
@@ -93,5 +97,8 @@ class eCommerceCategorySelector(models.Model):
             'platform': self.env.context.get('platform'),
             'default_product_tmpl_id': self.env.context.get('default_product_tmpl_id')
         }
-        return getattr(self, "_action_create_preset_{}".format(self.platform_id and self.platform_id.platform or self.env.context.get('platform')))(ctx)
+        return getattr(
+            self,
+            f"_action_create_preset_{self.platform_id and self.platform_id.platform or self.env.context.get('platform')}",
+        )(ctx)
                                                         

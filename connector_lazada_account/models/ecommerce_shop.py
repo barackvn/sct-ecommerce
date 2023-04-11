@@ -14,8 +14,8 @@ class eCommerceShop(models.Model):
         kw.setdefault('limit', 500)
         kw.setdefault('offset', 0)
         kw.setdefault('start_time', self._last_transaction_sync and \
-            max((self._last_transaction_sync + timedelta(days=1)).strftime("%Y-%m-%d"),(date.today()-timedelta(date.today().weekday())).strftime("%Y-%m-%d")) or \
-            (date.today()-timedelta(date.today().weekday())).strftime("%Y-%m-%d"))
+                max((self._last_transaction_sync + timedelta(days=1)).strftime("%Y-%m-%d"),(date.today()-timedelta(date.today().weekday())).strftime("%Y-%m-%d")) or \
+                (date.today()-timedelta(date.today().weekday())).strftime("%Y-%m-%d"))
         #dt = datetime.strptime(kw['start_time'],"%Y-%m-%d")
         #kw.setdefault('end_time', min((dt + timedelta(6-dt.weekday())).strftime("%Y-%m-%d"),(date.today() - timedelta(1)).strftime("%Y-%m-%d")))
         kw.setdefault('end_time', kw['start_time'])
@@ -36,6 +36,7 @@ class eCommerceShop(models.Model):
                 'sequence': s,
                 'note': 'Transactions: {}'.format(t['transaction_number'])
                 }
+
         if transactions:
             transactions.sort(key=lambda t: (datetime.strptime(t['transaction_date'], "%d %b %Y"), t.get('order_no','')))
             stmt = self.env['account.bank.statement'].search([
@@ -64,7 +65,7 @@ class eCommerceShop(models.Model):
                         })]
                     })
                     last_stmt.balance_end_real = last_stmt.balance_end
-                stmt.balance_start = last_stmt and last_stmt.balance_end or 0 
+                stmt.balance_start = last_stmt and last_stmt.balance_end or 0
             s = len(stmt.line_ids)+1
             lines, l = [], init_value(transactions[0], s)
             for t in transactions[1:]:
@@ -89,7 +90,7 @@ class eCommerceShop(models.Model):
                     ('state','in',['sale','done'])], limit=1)
                 if not order:
                     continue
-                if any([i.state == 'paid' for i in order.invoice_ids]):
+                if any(i.state == 'paid' for i in order.invoice_ids):
                     order.write({
                         'order_line': [(0, _, {
                             'product_id': self.env.ref('connector_ecommerce_common_account.product_product_ecommerce_expense').id,

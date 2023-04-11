@@ -7,5 +7,5 @@ class Client(client.Client):
         if "error" not in body:
             return body
         else:
-            raise exceptions.UserError('Shopee Error Info: {}'.format(body["msg"]))
+            raise exceptions.UserError(f'Shopee Error Info: {body["msg"]}')
 

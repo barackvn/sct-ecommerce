@@ -17,7 +17,7 @@ class eCommerceAttribute(models.Model):
 
     @api.depends('input_type')
     def _compute_allow_input(self):
-        for attr in self:
+        for _ in self:
             return True
             #getattr(attr, '_compute_allow_input_{}'.format(attr.platform_id.platform))()
 
@@ -83,7 +83,10 @@ class eCommerceProductTemplateAttributeLineValue(models.Model):
         if self.name:
             self.name = self.name.strip()
         if self.attr_line_id.ecomm_product_tmpl_id.platform_id:
-            getattr(self, '_onchange_name_{}'.format(self.attr_line_id.ecomm_product_tmpl_id.platform_id.platform))()
+            getattr(
+                self,
+                f'_onchange_name_{self.attr_line_id.ecomm_product_tmpl_id.platform_id.platform}',
+            )()
 
     def unlink(self):
         self.mapped('ecomm_product_image_ids').unlink()

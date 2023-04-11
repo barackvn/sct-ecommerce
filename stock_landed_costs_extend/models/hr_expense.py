@@ -36,7 +36,13 @@ class ExpenseSheet(models.Model):
                                 'account_id': line.product_id.property_account_expense_id.id or line.product_id.categ_id.property_account_expense_categ_id.id
                             })],
                         })
-                    if all([x.state in ['done', 'cancel'] for x in line.purchase_order_id.picking_ids]) and line.purchase_order_id.landed_cost_id.state == 'draft':
+                    if (
+                        all(
+                            x.state in ['done', 'cancel']
+                            for x in line.purchase_order_id.picking_ids
+                        )
+                        and line.purchase_order_id.landed_cost_id.state == 'draft'
+                    ):
                         line.purchase_order_id.landed_cost_id.compute_landed_cost()
                         line.purchase_order_id.landed_cost_id.button_validate()
 

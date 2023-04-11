@@ -18,4 +18,4 @@ class StockPicking(models.Model):
             else:
                 dct[p.ecommerce_shop_id] = p
         for shop, pickings in dct.items():
-            getattr(pickings, '_sync_tracking_info_{}'.format(shop.platform_id.platform))(shop)
+            getattr(pickings, f'_sync_tracking_info_{shop.platform_id.platform}')(shop)

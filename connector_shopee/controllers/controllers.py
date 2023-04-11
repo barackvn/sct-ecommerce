@@ -13,16 +13,11 @@ class ShopeeController(eCommerceController):
         json_data = http.request.jsonrequest
         request_body = json.dumps(json_data)
         authorization = http.request.httprequest.environ.get('HTTP_AUTHORIZATION')
-        base_string = url + '|' + request_body
+        base_string = f'{url}|{request_body}'
         cal_auth = hmac.new(platform.key.encode(), base_string.encode(), hashlib.sha256).hexdigest()
-        #_logger.info(cal_auth)
-        #if cal_auth == authorization:
-        if True:
-            _logger.info(json_data)
-            self._solver_shopee(platform,json_data=json_data)
-            return http.Response(status=202)
-        else:
-            return http.Response(status=500)
+        _logger.info(json_data)
+        self._solver_shopee(platform,json_data=json_data)
+        return http.Response(status=202)
 
     def _solver_shopee(self,platform,json_data={}):
         if json_data.get('code',0) == 1:

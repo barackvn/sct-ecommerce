@@ -44,8 +44,7 @@ class StockPicking(models.Model):
                 if picking.ecomm_delivery_slip_loaded:
                     continue
                 report.render(picking.ids)
-                attachment = report.retrieve_attachment(picking)
-                if attachment:
+                if attachment := report.retrieve_attachment(picking):
                     stream = io.BytesIO(base64.decodestring(attachment.datas))
                     writer = PdfFileWriter()
                     writer.appendPagesFromReader(PdfFileReader(stream))

@@ -4,18 +4,17 @@ from odoo.addons.connector_shopee.controllers.controllers import ShopeeControlle
 
 class ShopeeController(ShopeeController):
     def _solver_shopee(self,platform, json_data={}):
-        if not super(ShopeeController, self)._solver_shopee(platform, json_data=json_data):
-            if json_data.get('code',0) == 4:
-                data = json_data.get("data",{})
-                http.request.env['ecommerce.shop'].sudo().search([
-                    ('platform_id','=',platform.id),
-                    ('ecomm_shop_idn','=', json_data.get('shop_id'))
-                ])._order_tracking_push_shopee(data.get('ordersn'), data.get('trackingno'))
-                return True
-            else:
-                return False
-        else:
+        if super(ShopeeController, self)._solver_shopee(platform, json_data=json_data):
             return True
+        if json_data.get('code',0) == 4:
+            data = json_data.get("data",{})
+            http.request.env['ecommerce.shop'].sudo().search([
+                ('platform_id','=',platform.id),
+                ('ecomm_shop_idn','=', json_data.get('shop_id'))
+            ])._order_tracking_push_shopee(data.get('ordersn'), data.get('trackingno'))
+            return True
+        else:
+            return False
 
 #        if shop.sudo().order_tracking_no_push(kw.get('ordersn'), kw.get('trackingno')):
 #            return http.Response(status=200)

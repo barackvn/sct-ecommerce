@@ -13,7 +13,7 @@ class eCommercerShop(models.Model):
     def _auth_shopee(self):
         self.ensure_one()
 #        client_name = self._cr.dbname
-        redirect_url = "{}/connector_ecommerce/{}/auth".format(self.env['ir.config_parameter'].sudo().get_param('web.base.url'),self.id)
+        redirect_url = f"{self.env['ir.config_parameter'].sudo().get_param('web.base.url')}/connector_ecommerce/{self.id}/auth"
 #        req = requests.post(url=url, data={'client':client_name,'client_shop_id': self.id, 'name': self.name})
         return {
             "type": "ir.actions.act_url",
@@ -23,7 +23,7 @@ class eCommercerShop(models.Model):
 
     def _deauth_shopee(self):
         self.ensure_one()
-        redirect_url = "{}/connector_ecommerce/{}/auth".format(self.env['ir.config_parameter'].sudo().get_param('web.base.url'),self.id)
+        redirect_url = f"{self.env['ir.config_parameter'].sudo().get_param('web.base.url')}/connector_ecommerce/{self.id}/auth"
         return {
             "type": "ir.actions.act_url",
             "url": self._py_client_shopee().shop.cancel_authorize(redirect_url=redirect_url),
@@ -55,8 +55,12 @@ class eCommercerShop(models.Model):
                 path.pop()
             if not path:
                 path = temp[:]
-                temp_parent = self.env['ecommerce.category'].search([('platform_id','=', self.platform_id.id),('platform_categ_idn','=',categ['parent_id'])])[:1]
-                if temp_parent:
+                if temp_parent := self.env['ecommerce.category'].search(
+                    [
+                        ('platform_id', '=', self.platform_id.id),
+                        ('platform_categ_idn', '=', categ['parent_id']),
+                    ]
+                )[:1]:
                     vals = {
                         'name': categ['category_name'],
                         'platform_id': self.platform_id.id,
@@ -114,11 +118,12 @@ class eCommercerShop(models.Model):
         for item in resp['items']:
             if item['status'] == 'DELETED': 
                 continue
-            tmpl = model.search([
-                ('shop_id', '=', self.id),
-                ('platform_item_idn','=', str(item.get('item_id')))
-                ])
-            if tmpl:
+            if tmpl := model.search(
+                [
+                    ('shop_id', '=', self.id),
+                    ('platform_item_idn', '=', str(item.get('item_id'))),
+                ]
+            ):
                 tmpl._sync_info_shopee()
             else:
                 model.create({
@@ -169,32 +174,63 @@ class eCommercerShop(models.Model):
         if shipping_ids: 
             shipping_id = shipping_ids[0]
         else:
-            shipping_address.update({
+            shipping_address |= {
                 'type': 'delivery',
                 'parent_id': partner_id.id,
                 'phone': address['phone'],
-                })
+            }
             shipping_id = self.env['res.partner'].create(shipping_address)
 
-        order = self.env['sale.order'].create({
-                'ecommerce_shop_id' : self.id,
+        order = self.env['sale.order'].create(
+            {
+                'ecommerce_shop_id': self.id,
                 'team_id': self.team_id and self.team_id.id,
                 'client_order_ref': ordersn,
                 'partner_id': partner_id.id,
                 'partner_shipping_id': shipping_id.id,
-                'order_line':[(0, _, {
-                    'product_id' : item['variation_id'] and self.env['ecommerce.product.product'].search([
-                        ('platform_variant_idn','=',str(item['variation_id'])),
-                        ('ecomm_product_tmpl_id.shop_id','=',self.id)
-                    ]).product_product_id.id or self.env['ecommerce.product.template'].search([
-                        ('platform_item_idn','=',str(item['item_id']))
-                    ]).product_product_id.id or self.env.ref("connector_shopee.shopee_product_product_default").id,
-                    'name': '{}{}'.format(item['item_name'], item.get('variation_name',False) and ' ({})'.format(item['variation_name']) or ''),
-                    'price_unit': item['variation_discounted_price'] != '0' and item['variation_discounted_price'] or item['variation_original_price'],
-                    'product_uom_qty': item['variation_quantity_purchased'],
-                    #'route_id': self.route_id.id,
-                    }) for item in detail['items']], 
-                })
+                'order_line': [
+                    (
+                        0,
+                        _,
+                        {
+                            'product_id': item['variation_id']
+                            and self.env['ecommerce.product.product']
+                            .search(
+                                [
+                                    (
+                                        'platform_variant_idn',
+                                        '=',
+                                        str(item['variation_id']),
+                                    ),
+                                    (
+                                        'ecomm_product_tmpl_id.shop_id',
+                                        '=',
+                                        self.id,
+                                    ),
+                                ]
+                            )
+                            .product_product_id.id
+                            or self.env['ecommerce.product.template']
+                            .search(
+                                [('platform_item_idn', '=', str(item['item_id']))]
+                            )
+                            .product_product_id.id
+                            or self.env.ref(
+                                "connector_shopee.shopee_product_product_default"
+                            ).id,
+                            'name': f"""{item['item_name']}{item.get('variation_name', False) and f" ({item['variation_name']})" or ''}""",
+                            'price_unit': item['variation_discounted_price'] != '0'
+                            and item['variation_discounted_price']
+                            or item['variation_original_price'],
+                            'product_uom_qty': item[
+                                'variation_quantity_purchased'
+                            ],
+                        },
+                    )
+                    for item in detail['items']
+                ],
+            }
+        )
         return order
 
 

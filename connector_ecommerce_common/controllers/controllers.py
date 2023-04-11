@@ -8,15 +8,15 @@ _logger = logging.getLogger(__name__)
 class eCommerceController(http.Controller):
     @http.route('/connector_ecommerce/<model("ecommerce.platform"):platform>/webhook_endpoint', type='json', methods=['POST'], auth='public')
     def webhook(self, platform, **kw):
-        getattr(self, "_webhook_{}".format(platform.platform))(platform, **kw)
+        getattr(self, f"_webhook_{platform.platform}")(platform, **kw)
 
     @http.route('/connector_ecommerce/<model("ecommerce.shop"):shop>/auth', auth='public')
     def auth_callback(self, shop, **kw):
-        getattr(self, "_auth_callback_{}".format(shop.platform_id.platform))(shop, **kw)
+        getattr(self, f"_auth_callback_{shop.platform_id.platform}")(shop, **kw)
     
     @http.route('/connector_ecommerce/<model("ecommerce.shop"):shop>/deauth', auth='public')
     def deauth_callback(self, shop, **kw):
-        getattr(self, "_deauth_callback_{}".format(shop.platform_id.platform))(shop, **kw)
+        getattr(self, f"_deauth_callback_{shop.platform_id.platform}")(shop, **kw)
 #     def index(self, **kw):
 #         return "Hello, world"
 

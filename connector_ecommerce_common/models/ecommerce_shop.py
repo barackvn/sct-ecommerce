@@ -28,27 +28,29 @@ class eCommerceShop(models.Model):
     @api.multi
     def do_action(self, action):
         for shop in self:
-            getattr(shop, "_{}_{}".format(action, shop.platform_id.platform))
+            getattr(shop, f"_{action}_{shop.platform_id.platform}")
     
     def auth(self):
         self.ensure_one()
-        return getattr(self, "_auth_{}".format(self.platform_id.platform))()
+        return getattr(self, f"_auth_{self.platform_id.platform}")()
 
     def deauth(self):
         self.ensure_one()
-        return getattr(self, "_deauth_{}".format(self.platform_id.platform))()
+        return getattr(self, f"_deauth_{self.platform_id.platform}")()
 
     def sync_product_sku_match(self, **kw):
         self.ensure_one()
-        return getattr(self, "_sync_product_sku_match_{}".format(self.platform_id.platform))(**kw)
+        return getattr(
+            self, f"_sync_product_sku_match_{self.platform_id.platform}"
+        )(**kw)
 
     def sync_product(self, **kw):
         for shop in self:
-            getattr(shop, "_sync_product_{}".format(shop.platform_id.platform))(**kw)
+            getattr(shop, f"_sync_product_{shop.platform_id.platform}")(**kw)
 
     def vacuum_product(self):
         for shop in self:
-            getattr(shop, "_vacuum_product_{}".format(shop.platform_id.platform))()
+            getattr(shop, f"_vacuum_product_{shop.platform_id.platform}")()
 
     def match_sku(self):
         for shop in self:
@@ -56,7 +58,7 @@ class eCommerceShop(models.Model):
 
     def get_categories(self):
         for shop in self:
-            getattr(shop, "_get_categories_{}".format(shop.platform_id.platform))()
+            getattr(shop, f"_get_categories_{shop.platform_id.platform}")()
 
     @api.model
     def cron_sync_product(self):

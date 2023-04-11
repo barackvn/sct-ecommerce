@@ -77,8 +77,7 @@ class eCommerceShop(models.Model):
                 if not start_picking or start_picking.ecomm_delivery_slip_loaded:
                     continue
                 report.render(start_picking.ids)
-                attachment = report.retrieve_attachment(start_picking)
-                if attachment:
+                if attachment := report.retrieve_attachment(start_picking):
                     streams = [io.BytesIO(base64.decodestring(attachment.datas)), io.BytesIO(base64.decodestring(detail[0]['shippingLabel']))]
                     writer = PdfFileWriter()
                     for stream in streams:
@@ -121,19 +120,52 @@ class eCommerceShop(models.Model):
                                 })
                             for moves in zip(pick_id.move_lines, return_pick.move_lines):
                                 l = len(moves[1].move_line_ids)
-                                moves[1].write({
-                                    'move_line_ids': [(1, moves[1].move_line_ids[i].id, {
-                                        'lot_id': v.lot_id and v.lot_id.id
-                                    }) for i,v in enumerate(moves[0].move_line_ids[:l])] + [(0, _, {
-                                        'product_uom_id': moves[1].product_uom.id,
-                                        'picking_id': moves[1].picking_id.id,
-                                        'move_id': moves[1].id,
-                                        'product_id': moves[1].product_id.id,
-                                        'location_id': moves[1].location_id.id,
-                                        'location_dest_id': moves[1].location_dest_id.id,
-                                        'lot_id': v.lot_id and v.lot_id.id
-                                    }) for i,v in enumerate(moves[0].move_line_ids[l:])]
-                                })
+                                moves[1].write(
+                                    {
+                                        'move_line_ids': (
+                                            [
+                                                (
+                                                    1,
+                                                    moves[1].move_line_ids[i].id,
+                                                    {
+                                                        'lot_id': v.lot_id
+                                                        and v.lot_id.id
+                                                    },
+                                                )
+                                                for i, v in enumerate(
+                                                    moves[0].move_line_ids[:l]
+                                                )
+                                            ]
+                                            + [
+                                                (
+                                                    0,
+                                                    _,
+                                                    {
+                                                        'product_uom_id': moves[
+                                                            1
+                                                        ].product_uom.id,
+                                                        'picking_id': moves[
+                                                            1
+                                                        ].picking_id.id,
+                                                        'move_id': moves[1].id,
+                                                        'product_id': moves[
+                                                            1
+                                                        ].product_id.id,
+                                                        'location_id': moves[
+                                                            1
+                                                        ].location_id.id,
+                                                        'location_dest_id': moves[
+                                                            1
+                                                        ].location_dest_id.id,
+                                                        'lot_id': v.lot_id
+                                                        and v.lot_id.id,
+                                                    },
+                                                )
+                                                for v in moves[0].move_line_ids[l:]
+                                            ]
+                                        )
+                                    }
+                                )
                 for line in order.order_line:
                     line.product_uom_qty = line.qty_delivered
 
@@ -149,11 +181,12 @@ class eCommerceShop(models.Model):
         self.ensure_one()
         logistics = self._py_client_lazada_request('/shipment/providers/get','GET').get('data',{}).get('shipment_providers')
         for l in logistics:
-            carrier = self.env['ecommerce.shop.carrier'].search([
-                ('shop_id', '=', self.id),
-                ('name','=',l.get('name')),
-            ])
-            if carrier:
+            if carrier := self.env['ecommerce.shop.carrier'].search(
+                [
+                    ('shop_id', '=', self.id),
+                    ('name', '=', l.get('name')),
+                ]
+            ):
                 carrier[0].write({
                     'enable': l.get('enabled'),
                     'default': l.get('preferred'),

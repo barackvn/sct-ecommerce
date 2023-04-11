@@ -47,10 +47,18 @@ class ProductProduct(models.Model):
 
     def get_virtual_expire(self, field=False):
         self.ensure_one()
-        lots = self.env['stock.quant'].search([
-            ('product_id','=',self.id),
-            ('location_id.usage','=','internal')]).filtered(lambda q: q.reserved_quantity < q.quantity).mapped('lot_id').sorted(field or 'name')
-        if lots:
+        if (
+            lots := self.env['stock.quant']
+            .search(
+                [
+                    ('product_id', '=', self.id),
+                    ('location_id.usage', '=', 'internal'),
+                ]
+            )
+            .filtered(lambda q: q.reserved_quantity < q.quantity)
+            .mapped('lot_id')
+            .sorted(field or 'name')
+        ):
             return lots[0][field or 'name']
         else:
             return False

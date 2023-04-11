@@ -26,7 +26,7 @@ class StockPickingBatch(models.Model):
         if barcode:
             self.message = _('Tracking barcode: %s (%s)') % (barcode, message)
         else:
-            self.message = '%s' % message 
+            self.message = f'{message}' 
 
     def on_barcode_scanned(self, barcode):
         pickings = self.picking_ids.filtered(lambda p: p.carrier_tracking_ref == barcode)
@@ -34,25 +34,21 @@ class StockPickingBatch(models.Model):
         if pickings:
             if len(pickings) > 1:
                 self._set_message_info('more_match',_('More than one picking found'), barcode)
-            #val = {'picking_ids': [(1, p.id, {'process_datetime': fields.Datetime.now()}) for p in pickings]}
-            #val = {'picking_ids': [(4, p.id, _) for p in pickings]}
-            #self.update(val)
-            for p in pickings:
+            for _ in pickings:
                 for move in pickings.move_lines.filtered(lambda m: m.state not in ['done', 'cancel']):
                     for move_line in move.move_line_ids:
                         move_line.qty_done = move_line.product_uom_qty
-            else:
-                self._set_message_info('success', _('Barcode read correctly'), barcode)
+            self._set_message_info('success', _('Barcode read correctly'), barcode)
         else:
             self._set_message_info('error',_('No available picking found'), barcode)
 
         self.alert=1
    
     def print_delivery(self):
-        pickings = self.mapped('picking_ids')
-        if not pickings:
+        if pickings := self.mapped('picking_ids'):
+            return self.env.ref('stock.action_report_delivery').report_action(pickings)
+        else:
             raise UserError(_('Nothing to print.'))
-        return self.env.ref('stock.action_report_delivery').report_action(pickings)
 
 #    @api.onchange('picking_ids')
 #    def onchange_picking_ids(self):

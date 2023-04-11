@@ -15,21 +15,21 @@ class DeliveryCarrier(models.Model):
     ])
 
     def ecommerce_jtexpress_get_tracking_link(self, picking):
-        return "https://jtexpress.vn/vn/express/track?billcodes={}".format(picking.carrier_tracking_ref)
+        return f"https://jtexpress.vn/vn/express/track?billcodes={picking.carrier_tracking_ref}"
     
     def ecommerce_giaohangtietkiem_get_tracking_link(self, picking):
         return "https://giaohangtietkiem.vn/#searchPrice"
 
     def ecommerce_spx_get_tracking_link(self, picking):
-        return "https://spx.vn/#/detail/{}".format(picking.carrier_tracking_ref)
+        return f"https://spx.vn/#/detail/{picking.carrier_tracking_ref}"
 
     def ecommerce_lex_get_tracking_link(self, picking):
-        return "https://tracker.lel.asia/tracker?trackingNumber={}".format(picking.carrier_tracking_ref)
+        return f"https://tracker.lel.asia/tracker?trackingNumber={picking.carrier_tracking_ref}"
 
     def ecommerce_ninjavan_get_tracking_link(self, picking):
-        return "https://www.ninjavan.co/en-vn/tracking?id={}".format(picking.carrier_tracking_ref)
+        return f"https://www.ninjavan.co/en-vn/tracking?id={picking.carrier_tracking_ref}"
 
     def ecommerce_vncpost_get_tracking_link(self, picking):
-        return "https://vncpost.com/hanh-trinh-don-hang?code={}".format(picking.carrier_tracking_ref)
+        return f"https://vncpost.com/hanh-trinh-don-hang?code={picking.carrier_tracking_ref}"
 
 

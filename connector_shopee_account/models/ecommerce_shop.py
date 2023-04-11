@@ -37,9 +37,7 @@ class eCommerceShop(models.Model):
                 if invoice.state == "draft": 
                     invoice.reference = order.client_order_ref
                     invoice.action_invoice_open()
-            return order
-        else:
-            return order
+        return order
         #super(eCommerceShop, self)._update_order_shopee(ordersn, status, update_time, detail=detail)
 
     @api.multi
@@ -49,9 +47,11 @@ class eCommerceShop(models.Model):
         kw.setdefault('pagination_entries_per_page', 100)
         # avoiding duplicate by adding 1 to last_sync timestamp
         kw.setdefault('create_time_from', self._last_transaction_sync and \
-            max(int(self._last_transaction_sync.timestamp()+1), int(datetime.now().timestamp())-1209600) or \
-            int((datetime.now() - timedelta(days=7)).timestamp()))
-        if self._last_transaction_sync and  not kw['create_time_from'] > int(self._last_transaction_sync.timestamp()):
+                max(int(self._last_transaction_sync.timestamp()+1), int(datetime.now().timestamp())-1209600) or \
+                int((datetime.now() - timedelta(days=7)).timestamp()))
+        if self._last_transaction_sync and kw['create_time_from'] <= int(
+            self._last_transaction_sync.timestamp()
+        ):
             return False
         kw.setdefault('create_time_to', min(int(datetime.now().timestamp()),kw['create_time_from'] + 1209600))
         transaction_list = []
@@ -71,17 +71,38 @@ class eCommerceShop(models.Model):
                 #'name': fields.Datetime.now().astimezone(pytz.timezone(self.env.user.tz or 'UTC')).strftime('%Y-%m-%d'),
                 'balance_start': last_stmt and last_stmt.balance_end or transaction_list[0]['current_balance'] -transaction_list[0]['amount'],
             })
-            stmt.write({
-                'line_ids': [(0, _, {
-                    'date': datetime.fromtimestamp(t['create_time']).astimezone(pytz.timezone(self.env.user.tz or 'UTC')).strftime('%Y-%m-%d'),
-                    'name': t.get('ordersn') and '{}: {}'.format(t['transaction_type'], t['ordersn']) or t.get('withdrawal_id') and '{}: {}'.format(t['transaction_type'], t['withdrawal_id']) or t['transaction_type'],
-                    'partner_id': self.env['res.partner'].search([('ref','=',t['buyer_name'])])[:1].id,
-                    'ref': t['transaction_id'],
-                    'amount': t['amount'],
-                    'sequence': i+1, 
-                    'note': json.dumps({k: v for k,v in t.items() if v}),
-                }) for i, t in enumerate(transaction_list)],
-            })
+            stmt.write(
+                {
+                    'line_ids': [
+                        (
+                            0,
+                            _,
+                            {
+                                'date': datetime.fromtimestamp(t['create_time'])
+                                .astimezone(
+                                    pytz.timezone(self.env.user.tz or 'UTC')
+                                )
+                                .strftime('%Y-%m-%d'),
+                                'name': t.get('ordersn')
+                                and f"{t['transaction_type']}: {t['ordersn']}"
+                                or t.get('withdrawal_id')
+                                and f"{t['transaction_type']}: {t['withdrawal_id']}"
+                                or t['transaction_type'],
+                                'partner_id': self.env['res.partner']
+                                .search([('ref', '=', t['buyer_name'])])[:1]
+                                .id,
+                                'ref': t['transaction_id'],
+                                'amount': t['amount'],
+                                'sequence': i + 1,
+                                'note': json.dumps(
+                                    {k: v for k, v in t.items() if v}
+                                ),
+                            },
+                        )
+                        for i, t in enumerate(transaction_list)
+                    ]
+                }
+            )
             stmt.balance_end_real = stmt.balance_end
             account_rcv = self.env['account.account'].search([('user_type_id.type', '=', 'receivable')], limit=1)
             for line in stmt.line_ids:

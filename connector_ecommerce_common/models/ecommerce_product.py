@@ -40,17 +40,16 @@ def format_tz(env, dt, tz=False, format=False):
 
     if format:
         return pycompat.text_type(ts.strftime(format))
-    else:
-        lang = env.context.get("lang")
-        langs = env['res.lang']
-        if lang:
-            langs = env['res.lang'].search([("code", "=", lang)])
-        format_date = langs.date_format or '%B-%d-%Y'
-        format_time = langs.time_format or '%I-%M %p'
+    lang = env.context.get("lang")
+    langs = env['res.lang']
+    if lang:
+        langs = env['res.lang'].search([("code", "=", lang)])
+    format_date = langs.date_format or '%B-%d-%Y'
+    format_time = langs.time_format or '%I-%M %p'
 
-        fdate = pycompat.text_type(ts.strftime(format_date))
-        ftime = pycompat.text_type(ts.strftime(format_time))
-        return u"%s %s%s" % (fdate, ftime, (u' (%s)' % tz) if tz else u'')
+    fdate = pycompat.text_type(ts.strftime(format_date))
+    ftime = pycompat.text_type(ts.strftime(format_time))
+    return f"{fdate} {ftime}{f' ({tz})' if tz else ''}"
 
 def format_amount(env, amount, currency):
     fmt = "%.{0}f".format(currency.decimal_places)
@@ -148,7 +147,7 @@ class eCommerceProductPreset(models.AbstractModel):
     @api.onchange('ecomm_categ_id')
     def onchange_ecomm_categ_id(self):
         if self.platform_id:
-            getattr(self, '_onchange_ecomm_categ_id_{}'.format(self.platform_id.platform))()
+            getattr(self, f'_onchange_ecomm_categ_id_{self.platform_id.platform}')()
 
 
 class eCommerceProductTemplate(models.Model):
@@ -206,9 +205,9 @@ class eCommerceProductTemplate(models.Model):
         if field_name:
             expression = "${object." + field_name
             if sub_field_name:
-                expression += "." + sub_field_name
+                expression += f".{sub_field_name}"
             if null_value:
-                expression += " or '''%s'''" % null_value
+                expression += f" or '''{null_value}'''"
             expression += "}"
         return expression
 
@@ -216,8 +215,9 @@ class eCommerceProductTemplate(models.Model):
     def onchange_sub_model_object_value_field(self):
         if self.model_object_field:
             if self.model_object_field.ttype in ['many2one', 'one2many', 'many2many']:
-                model = self.env['ir.model']._get(self.model_object_field.relation)
-                if model:
+                if model := self.env['ir.model']._get(
+                    self.model_object_field.relation
+                ):
                     self.sub_object = model.id
                     self.copy_value = self.build_expression(self.model_object_field.name, self.sub_model_object_field and self.sub_model_object_field.name or False, self.null_value or False)
             else:
@@ -257,12 +257,11 @@ class eCommerceProductTemplate(models.Model):
 
     def get_template(self):
         self.ensure_one()
-        lang =  self._render_template(self.lang)
-        if lang:
-            template = self.with_context(lang=lang)
-        else:
-            template = self
-        return template
+        return (
+            self.with_context(lang=lang)
+            if (lang := self._render_template(self.lang))
+            else self
+        )
 
     def generate_values(self, fields=None):
         self.ensure_one()
@@ -285,17 +284,17 @@ class eCommerceProductTemplate(models.Model):
     def update_info(self, context=None, data={}, image=False):
         for p in self:
             #if image: getattr(p, '_update_image_{}'.format(p.platform_id.platform))()
-            getattr(p, "_update_info_{}".format(p.platform_id.platform))(data=data)
+            getattr(p, f"_update_info_{p.platform_id.platform}")(data=data)
 
     def add_to_shop(self, context=None, data=None):
         for p in self:
-            getattr(p, '_add_to_shop_{}'.format(p.platform_id.platform))(data=data)
+            getattr(p, f'_add_to_shop_{p.platform_id.platform}')(data=data)
 
     def update_stock(self):
         if self:
             platform_id = self.mapped('platform_id')
             platform_id.ensure_one()
-            getattr(self, "_update_stock_{}".format(platform_id.platform))()
+            getattr(self, f"_update_stock_{platform_id.platform}")()
 
     @api.model
     def cron_update_stock(self):
@@ -308,23 +307,28 @@ class eCommerceProductTemplate(models.Model):
 
     def sync_info(self):
         for p in self:
-            getattr(p, '_sync_info_{}'.format(p.platform_id.platform))()
+            getattr(p, f'_sync_info_{p.platform_id.platform}')()
 
     def match_sku(self):
         for item in self:
             if item.ecomm_product_product_ids.filtered('sku'):
                 item.product_product_id = False
                 if item.product_tmpl_id and item.product_tmpl_id.active:
-                    d = {}
-                    for v in item.ecomm_product_product_ids:
-                        if v.sku:
-                            d.update({v: self.env['product.product'].search([
-                                ('product_tmpl_id','=',item.product_tmpl_id.id),
-                                ('default_code','=',v.sku)])[:1].id
-                            })
+                    d = {
+                        v: self.env['product.product']
+                        .search(
+                            [
+                                ('product_tmpl_id', '=', item.product_tmpl_id.id),
+                                ('default_code', '=', v.sku),
+                            ]
+                        )[:1]
+                        .id
+                        for v in item.ecomm_product_product_ids
+                        if v.sku
+                    }
                     if all(d.values()):
-                        for v in d:
-                            v.write({'product_product_id': d[v]})
+                        for v, value in d.items():
+                            v.write({'product_product_id': value})
                     else:
                         item.write({
                             'product_tmpl_id': False,
@@ -355,7 +359,13 @@ class eCommerceProductTemplate(models.Model):
                     'product_product_id': False,
                     'ecomm_product_product_ids': [(1, p.id, {'product_product_id': False}) for p in item.ecomm_product_product_ids]
                 })
-            if item.platform_item_idn and item.product_tmpl_id and not item.product_tmpl_id['{}_product_preset_id'.format(item.platform_id.platform)]:
+            if (
+                item.platform_item_idn
+                and item.product_tmpl_id
+                and not item.product_tmpl_id[
+                    f'{item.platform_id.platform}_product_preset_id'
+                ]
+            ):
                 item.make_preset()
 
 #    @api.onchange('product_tmpl_id', 'product_product_id', 'ecomm_product_product_ids')
@@ -368,7 +378,7 @@ class eCommerceProductTemplate(models.Model):
     @api.onchange('shop_id')
     def onchange_shop_id(self):
         if self.shop_id:
-            getattr(self, '_onchange_shop_id_{}'.format(self.platform_id.platform))()
+            getattr(self, f'_onchange_shop_id_{self.platform_id.platform}')()
     
     #@api.onchange()
     #def load_demo_value(self):
@@ -388,19 +398,22 @@ class eCommerceProductTemplate(models.Model):
     @api.depends('product_tmpl_id', 'platform_id')
     def compute_has_preset(self):
         for i in self:
-            if i.product_tmpl_id and i.platform_id and i.product_tmpl_id.mapped('{}_product_preset_id'.format(i.platform_id.platform)): 
-                i.has_preset = True
-            else:
-                i.has_preset = False
+            i.has_preset = bool(
+                i.product_tmpl_id
+                and i.platform_id
+                and i.product_tmpl_id.mapped(
+                    f'{i.platform_id.platform}_product_preset_id'
+                )
+            )
 
     def load_preset(self):
         self.ensure_one()
-        getattr(self, '_load_preset_{}'.format(self.platform_id.platform))()
+        getattr(self, f'_load_preset_{self.platform_id.platform}')()
 
     def make_preset(self):
         for p in self:
             if p.platform_id: 
-                getattr(p,'_make_preset_{}'.format(p.platform_id.platform))()
+                getattr(p, f'_make_preset_{p.platform_id.platform}')()
 
     def calculate_stock(self, default=1000):
         for p in self:
@@ -416,7 +429,7 @@ class eCommerceProductTemplate(models.Model):
         Product = self.env['ecommerce.product.product']
         variants_to_create = []
         variants_to_unlink = self.ecomm_product_product_ids
-        
+
         value_list = [line.line_value_ids for line in self.attribute_line_ids]
         if any(value_list):
             combinations = itertools.product(*[line.line_value_ids for line in self.attribute_line_ids])
@@ -438,12 +451,9 @@ class eCommerceProductTemplate(models.Model):
             triplets += [(2, v.id, 0) for v in variants_to_unlink]
         if variants_to_create:
             triplets += [(0, 0, vals) for vals in variants_to_create]
-        if triplets:
-            return {'value': {
-                'ecomm_product_product_ids': triplets
-            }}
-        else: 
-            return {}
+        return (
+            {'value': {'ecomm_product_product_ids': triplets}} if triplets else {}
+        )
 
 
     @api.depends('attribute_line_ids.line_value_ids.ecomm_product_image_ids')
@@ -514,12 +524,17 @@ class eCommerceProductImage(models.Model):
     @api.depends('image')
     def compute_image_url(self):
         for i in self:
-            img = self.env['ir.attachment'].sudo().search([
-                ('res_model','=','ecommerce.product.image'),
-                ('res_id','=',i.id),
-                ('res_field', '=', 'image')
-                ])[:1]
-            if img:
+            if (
+                img := self.env['ir.attachment']
+                .sudo()
+                .search(
+                    [
+                        ('res_model', '=', 'ecommerce.product.image'),
+                        ('res_id', '=', i.id),
+                        ('res_field', '=', 'image'),
+                    ]
+                )[:1]
+            ):
                 img.public=True
                 i.image_url = self.env['ir.config_parameter'].get_param('web.base.url') + img.local_url
 

@@ -40,8 +40,7 @@ class StockPicking(models.Model):
                 if picking.ecomm_delivery_slip_loaded:
                     continue
                 report.render(picking.ids)
-                attachment = report.retrieve_attachment(picking)
-                if attachment:
+                if attachment := report.retrieve_attachment(picking):
                     streams = [io.BytesIO(base64.decodestring(attachment.datas)), io.BytesIO(requests.get(o['airway_bill']).content)]
                     writer = PdfFileWriter()
                     for stream in streams:

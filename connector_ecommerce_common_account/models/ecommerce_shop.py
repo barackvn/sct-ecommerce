@@ -54,4 +54,4 @@ class eCommerceShop(models.Model):
     @api.multi
     def sync_transaction(self,**kw):
         for shop in self:
-            getattr(shop, '_sync_transaction_{}'.format(shop.platform_id.platform))(**kw)
+            getattr(shop, f'_sync_transaction_{shop.platform_id.platform}')(**kw)
